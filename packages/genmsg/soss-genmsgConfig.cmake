@@ -8,6 +8,9 @@ if(soss-genmsg_CONFIG_INCLUDED)
 endif()
 set(soss-genmsg_CONFIG_INCLUDED TRUE)
 
+include(CMakeFindDependencyMacro)
+find_dependency(soss-core REQUIRED)
+
 set(SOSS_GENMSG_GENERATE_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/scripts/soss_genmsg_generate.py")
 set(SOSS_GENMSG_FIND_PACKAGE_INFO_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/scripts/soss_genmsg_find_package_info.py")
 
