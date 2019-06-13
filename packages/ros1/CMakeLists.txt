@@ -33,6 +33,7 @@ find_package(catkin REQUIRED COMPONENTS roscpp)
 add_library(soss-ros1 SHARED
   src/Factory.cpp
   src/SystemHandle.cpp
+  src/MetaPublisher.cpp
 )
 
 target_link_libraries(soss-ros1
