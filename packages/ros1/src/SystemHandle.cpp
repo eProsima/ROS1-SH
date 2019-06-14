@@ -16,6 +16,7 @@
 */
 
 #include "SystemHandle.hpp"
+#include "MetaPublisher.hpp"
 
 #include <soss/ros1/Factory.hpp>
 
@@ -168,8 +169,18 @@ bool SystemHandle::subscribe(
 std::shared_ptr<TopicPublisher> SystemHandle::advertise(
     const std::string& topic_name,
     const std::string& message_type,
-    const YAML::Node& /*configuration*/)
+    const YAML::Node& configuration)
 {
+  if(topic_name.find('{') != std::string::npos)
+  {
+    // If the topic name contains a curly brace, we must assume that it needs
+    // runtime substitutions.
+    return make_meta_publisher(
+          message_type, *_node, topic_name,
+          default_queue_size, default_latch_behavior,
+          configuration);
+  }
+
   // TODO(MXG): Parse configuration so users can change queue size and latch
   // behavior
   return Factory::instance().create_publisher(
