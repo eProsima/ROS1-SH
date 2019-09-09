@@ -19,6 +19,7 @@
 #define SOSS__ROS1__FACTORY_HPP
 
 #include <soss/SystemHandle.hpp>
+#include <soss/ros1/export.hpp>
 
 #include <ros/node_handle.h>
 
@@ -29,7 +30,7 @@ namespace soss {
 namespace ros1 {
 
 //==============================================================================
-class Factory
+class SOSS_ROS1_API Factory
 {
 public:
 
