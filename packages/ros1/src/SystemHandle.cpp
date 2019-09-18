@@ -59,13 +59,17 @@ void print_missing_mix_file(
 //==============================================================================
 bool SystemHandle::configure(
     const RequiredTypes& types,
-    const YAML::Node& /*configuration*/)
+    const YAML::Node& configuration)
 {
   int argc = 1;
   char* argv[1];
   char buffer[5] = "soss";
   argv[0] = buffer;
-  ros::init(argc, argv, std::string("soss_ros1"));
+
+  const YAML::Node yaml_node_name = configuration["node_name"];
+  std::string node_name = yaml_node_name?
+        yaml_node_name.as<std::string>() : std::string("soss_ros1");
+  ros::init(argc, argv, std::move(node_name));
 
   _node = std::make_unique<ros::NodeHandle>();
 
