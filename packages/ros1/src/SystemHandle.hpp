@@ -79,7 +79,7 @@ private:
   std::vector<std::shared_ptr<ServiceClient>> _client_proxies;
 
   const uint32_t default_queue_size = 10;
-  const bool default_latch_behavior = false;
+  const bool default_latch_behavior = true;
 
 };
 
