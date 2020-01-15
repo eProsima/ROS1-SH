@@ -154,13 +154,13 @@ bool SystemHandle::subscribe(
     const std::string& topic_name,
     const std::string& message_type,
     SubscriptionCallback callback,
-    const YAML::Node& /*configuration*/)
+    const YAML::Node& configuration)
 {
-  // TODO(MXG): Parse configuration so users can change queue size and transport
-  // hints
+  int queue_size = configuration["queue_size"].as<int>(default_queue_size);
+  // TODO(MXG): Parse configuration so users can change transport hints
   auto subscription = Factory::instance().create_subscription(
         message_type, *_node, topic_name,
-        callback, default_queue_size, ros::TransportHints());
+        callback, queue_size, ros::TransportHints());
 
   if(!subscription)
     return false;
@@ -175,21 +175,22 @@ std::shared_ptr<TopicPublisher> SystemHandle::advertise(
     const std::string& message_type,
     const YAML::Node& configuration)
 {
+  int queue_size = configuration["queue_size"].as<int>(default_queue_size);
+  bool latch_behavior = configuration["latch"].as<bool>(default_latch_behavior);
+
   if(topic_name.find('{') != std::string::npos)
   {
     // If the topic name contains a curly brace, we must assume that it needs
     // runtime substitutions.
     return make_meta_publisher(
           message_type, *_node, topic_name,
-          default_queue_size, default_latch_behavior,
+          queue_size, latch_behavior,
           configuration);
   }
 
-  // TODO(MXG): Parse configuration so users can change queue size and latch
-  // behavior
   return Factory::instance().create_publisher(
         message_type, *_node, topic_name,
-        default_queue_size, default_latch_behavior);
+        queue_size, latch_behavior);
 }
 
 //==============================================================================
