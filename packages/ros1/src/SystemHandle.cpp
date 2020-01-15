@@ -156,8 +156,7 @@ bool SystemHandle::subscribe(
     SubscriptionCallback callback,
     const YAML::Node& configuration)
 {
-  const YAML::Node& queue_config = configuration["queue_size"];
-  int queue_size = queue_config ? queue_config.as<int>() : default_queue_size;
+  int queue_size = configuration["queue_size"].as<int>(default_queue_size);
   // TODO(MXG): Parse configuration so users can change transport hints
   auto subscription = Factory::instance().create_subscription(
         message_type, *_node, topic_name,
@@ -176,11 +175,8 @@ std::shared_ptr<TopicPublisher> SystemHandle::advertise(
     const std::string& message_type,
     const YAML::Node& configuration)
 {
-  const YAML::Node& queue_config = configuration["queue_size"];
-  const YAML::Node& latch_config = configuration["latch"];
-
-  int queue_size = queue_config ? queue_config.as<int>() : default_queue_size;
-  bool latch_behavior = latch_config ? latch_config.as<bool>() : default_latch_behavior;
+  int queue_size = configuration["queue_size"].as<int>(default_queue_size);
+  bool latch_behavior = configuration["latch"].as<bool>(default_latch_behavior);
 
   if(topic_name.find('{') != std::string::npos)
   {
