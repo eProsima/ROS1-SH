@@ -19,6 +19,24 @@
 @#######################################################################
 
 @{
+BUILTIN_TYPES = {
+    'bool'    : 'bool',
+    'byte'    : 'int8_t',
+    'char'    : 'char',
+    'wchar'   : 'wchar_t',
+    'float32' : 'float',
+    'float64' : 'double',
+    'float128': 'long double',
+    'int8'    : 'int8_t',
+    'uint8'   : 'uint8_t',
+    'int16'   : 'int16_t',
+    'uint16'  : 'uint16_t',
+    'int32'   : 'int32_t',
+    'uint32'  : 'uint32_t',
+    'int64'   : 'int64_t',
+    'uint64'  : 'uint64_t'
+}
+
 cpp_msg_type = '{}::{}'.format(package, type)
 
 msg_type_string = '{}/{}'.format(package, type)
@@ -30,7 +48,7 @@ header_guard_variable = '__'.join([x.upper() for x in header_guard_parts])
 namespace_parts = ['convert', package, 'msg', type]
 namespace_variable = '__'.join(namespace_parts)
 
-ros2_msg_dependency = '{}/{}.h'.format(package, type)
+ros1_msg_dependency = '{}/{}.h'.format(package, type)
 
 conversion_dependencies = {}
 for field in spec.parsed_fields():
@@ -42,19 +60,20 @@ for field in spec.parsed_fields():
     if key not in conversion_dependencies:
         conversion_dependencies[key] = set([])
     conversion_dependencies[key].add(field.name)
-
-alphabetical_fields = sorted(spec.parsed_fields(), key=lambda x: x.name)
 }@
 #ifndef @(header_guard_variable)
 #define @(header_guard_variable)
 
-// Include the header for the generic soss message type
+// Include the header for the generic message type
+#include <soss/Message.hpp>
+
+// Include the header for the conversions
 #include <soss/ros1/utilities.hpp>
 
 // Include the header for the concrete ros1 messagetype
-#include <@(ros2_msg_dependency)>
+#include <@(ros1_msg_dependency)>
 
-// Include the headers for the soss message conversion dependencies
+// Include the headers for the message conversion dependencies
 @[if conversion_dependencies.keys()]@
 @[    for key in sorted(conversion_dependencies.keys())]@
 #include <@(key)> // @(', '.join(conversion_dependencies[key]))
@@ -71,44 +90,60 @@ using Ros1_Msg = @(cpp_msg_type);
 using Ros1_MsgPtr = @(cpp_msg_type)Ptr;
 const std::string g_msg_name = "@(msg_type_string)";
 
-//==============================================================================
-inline soss::Message initialize()
-{
-  soss::Message msg;
-  msg.type = g_msg_name;
-@[for field in alphabetical_fields]@
-  soss::Convert<Ros1_Msg::_@(field.name)_type>::add_field(msg, "@(field.name)");
-@[end for]@
 
-  return msg;
+//==============================================================================
+inline const xtypes::StructType type()
+{
+  xtypes::StructType type(g_msg_name);
+@[for field in spec.parsed_fields()]@
+@[    if field.base_type in BUILTIN_TYPES.keys()]@
+  const xtypes::DynamicType& derived_type_@(field.name) = xtypes::primitive_type<@(BUILTIN_TYPES[field.base_type])>();
+@[    else]@
+@[        if 'string' in field.base_type]@
+  const xtypes::StringType derived_type_@(field.name) = xtypes::StringType();
+@[        elif field.base_type in ['duration', 'time']]@
+  const xtypes::StructType derived_type_@(field.name) ( // Special "@(field.base_type)" ROS1 built-in type
+        soss::ros1::convert__msg__Timebase::type("@(field.name)"));
+@[        else]@
+  const xtypes::StructType derived_type_@(field.name) (
+        soss::ros1::convert__@(field.base_type[:field.base_type.find('/')])__msg__@(field.base_type[field.base_type.find('/')+1:])::type());
+@[        end if]@
+@[    end if]@
+@[    if field.is_array]@
+@[        if field.array_len]@
+  type.add_member("@(field.name)", xtypes::SequenceType(std::move(derived_type_@(field.name)), @(field.array_len)));
+@[        else]@
+  type.add_member("@(field.name)", xtypes::SequenceType(std::move(derived_type_@(field.name))));
+@[        end if]@
+@[    else]@
+  type.add_member("@(field.name)", std::move(derived_type_@(field.name)));
+@[    end if]@
+@[end for]@
+  return type;
 }
 
 //==============================================================================
-inline void convert_to_ros1(const soss::Message& from, Ros1_Msg& to)
+inline void convert_to_ros1(const xtypes::ReadableDynamicDataRef& from, Ros1_Msg& to)
 {
-  auto from_field = from.data.begin();
-@[for field in alphabetical_fields]@
-  soss::Convert<Ros1_Msg::_@(field.name)_type>::from_soss_field(from_field++, to.@(field.name));
+@[for field in spec.parsed_fields()]@
+  soss::Convert<Ros1_Msg::_@(field.name)_type>::from_xtype_field(from["@(field.name)"], to.@(field.name));
 @[end for]@
 
   // Suppress possible unused variable warnings
   (void)from;
   (void)to;
-  (void)from_field;
 }
 
 //==============================================================================
-inline void convert_to_soss(const Ros1_Msg& from, soss::Message& to)
+inline void convert_to_xtype(const Ros1_Msg& from, xtypes::WritableDynamicDataRef to)
 {
-  auto to_field = to.data.begin();
-@[for field in alphabetical_fields]@
-  soss::Convert<Ros1_Msg::_@(field.name)_type>::to_soss_field(from.@(field.name), to_field++);
+@[for field in spec.parsed_fields()]@
+  soss::Convert<Ros1_Msg::_@(field.name)_type>::to_xtype_field(from.@(field.name), to["@(field.name)"]);
 @[end for]@
 
   // Suppress possible unused variable warnings
   (void)from;
   (void)to;
-  (void)to_field;
 }
 
 } // namespace @(namespace_variable)
@@ -118,9 +153,8 @@ template<>
 struct Convert<ros1::@(namespace_variable)::Ros1_Msg>
     : MessageConvert<
       ros1::@(namespace_variable)::Ros1_Msg,
-     &ros1::@(namespace_variable)::initialize,
      &ros1::@(namespace_variable)::convert_to_ros1,
-     &ros1::@(namespace_variable)::convert_to_soss
+     &ros1::@(namespace_variable)::convert_to_xtype
      > { };
 
 } // namespace soss

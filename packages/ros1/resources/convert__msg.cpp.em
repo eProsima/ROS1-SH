@@ -38,6 +38,11 @@ namespace ros1 {
 namespace @(namespace_variable) {
 
 //==============================================================================
+namespace {
+TypeFactoryRegistrar register_type(g_msg_name, &type);
+} // anonymous namespace
+
+//==============================================================================
 class Subscription final
 {
 public:
@@ -45,12 +50,13 @@ public:
   Subscription(
       ros::NodeHandle& node,
       const std::string& topic_name,
+      const xtypes::DynamicType& message_type,
       TopicSubscriberSystem::SubscriptionCallback callback,
       uint32_t queue_size,
       const ros::TransportHints& transport_hints)
     : _callback(std::move(callback))
+    , _message_type(message_type)
   {
-    _message = initialize();
 
     _subscription = node.subscribe(
         topic_name, queue_size, &Subscription::subscription_callback, this,
@@ -61,15 +67,16 @@ private:
 
   void subscription_callback(const Ros1_MsgPtr& msg)
   {
-    convert_to_soss(*msg, _message);
-    _callback(_message);
+    xtypes::DynamicData data(_message_type);
+    convert_to_xtype(*msg, data);
+    _callback(data);
   }
 
   const std::string _topic;
 
   TopicSubscriberSystem::SubscriptionCallback _callback;
 
-  soss::Message _message;
+  const xtypes::DynamicType& _message_type;
 
   ros::Subscriber _subscription;
 };
@@ -78,12 +85,13 @@ private:
 std::shared_ptr<void> subscribe(
     ros::NodeHandle& node,
     const std::string& topic_name,
+    const xtypes::DynamicType& message_type,
     TopicSubscriberSystem::SubscriptionCallback callback,
     const uint32_t queue_size,
     const ros::TransportHints& transport_hints)
 {
   return std::make_shared<Subscription>(
-        node, topic_name, std::move(callback), queue_size, transport_hints);
+        node, topic_name, message_type, std::move(callback), queue_size, transport_hints);
 }
 
 //==============================================================================
@@ -105,7 +113,7 @@ public:
     _publisher = node.advertise<Ros1_Msg>(topic_name, queue_size, latch);
   }
 
-  bool publish(const soss::Message& message) override
+  bool publish(const xtypes::DynamicData& message) override
   {
     Ros1_Msg ros1_msg;
     convert_to_ros1(message, ros1_msg);

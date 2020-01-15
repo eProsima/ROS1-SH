@@ -28,15 +28,17 @@
 #include <catch2/catch.hpp>
 
 #include <random>
+#include <limits>
 
 using Catch::Matchers::WithinAbs;
 
-geometry_msgs::PoseStamped generate_random_pose(const uint32_t sec = 0)
+geometry_msgs::PoseStamped generate_random_pose()
 {
   std::mt19937 rng;
   // Use a fixed seed for deterministic test results
   rng.seed(39);
   std::uniform_real_distribution<double> dist(-100.0, 100.0);
+  std::uniform_int_distribution<uint32_t>t_dist(0, std::numeric_limits<int32_t>::max());
 
   geometry_msgs::PoseStamped ros1_pose;
 
@@ -50,60 +52,38 @@ geometry_msgs::PoseStamped generate_random_pose(const uint32_t sec = 0)
   ros1_pose.pose.orientation.z = 0.0;
 
   ros1_pose.header.frame_id = "map";
-  ros1_pose.header.stamp.sec = sec;
+  ros1_pose.header.stamp.sec = t_dist(rng);
+  ros1_pose.header.stamp.nsec = t_dist(rng);
 
   return ros1_pose;
 }
 
-soss::Message generate_pose_msg(
-    const geometry_msgs::PoseStamped& p)
+void transform_pose_msg(
+    const geometry_msgs::PoseStamped& p,
+    xtypes::WritableDynamicDataRef to)
 {
-  soss::Message stamp;
-  stamp.type = "builtin_interfaces/Time";
-  stamp.data["sec"] = soss::Convert<int32_t>::make_soss_field(p.header.stamp.sec);
-  stamp.data["nanosec"] = soss::Convert<uint32_t>::make_soss_field(p.header.stamp.nsec);
-
-  soss::Message header;
-  header.type = "std_msgs/Header";
-  header.data["stamp"] = soss::make_field<soss::Message>(stamp);
-  header.data["frame_id"] = soss::Convert<std::string>::make_soss_field("map");
-
-  soss::Message position;
-  position.type = "geometry_msgs/Point";
-  position.data["x"] = soss::Convert<double>::make_soss_field(p.pose.position.x);
-  position.data["y"] = soss::Convert<double>::make_soss_field(p.pose.position.y);
-  position.data["z"] = soss::Convert<double>::make_soss_field(p.pose.position.z);
-
-  soss::Message orientation;
-  orientation.type = "geometry_msgs/Quaternion";
-  orientation.data["x"] = soss::Convert<double>::make_soss_field(p.pose.orientation.x);
-  orientation.data["y"] = soss::Convert<double>::make_soss_field(p.pose.orientation.y);
-  orientation.data["z"] = soss::Convert<double>::make_soss_field(p.pose.orientation.z);
-  orientation.data["w"] = soss::Convert<double>::make_soss_field(p.pose.orientation.w);
-
-  soss::Message pose;
-  pose.type = "geometry_msgs/Pose";
-  pose.data["position"] = soss::make_field<soss::Message>(position);
-  pose.data["orientation"] = soss::make_field<soss::Message>(orientation);
-
-  soss::Message msg;
-  msg.type = "geometry_msgs/PoseStamped";
-  msg.data["header"] = soss::make_field<soss::Message>(header);
-  msg.data["pose"] = soss::make_field<soss::Message>(pose);
-
-  return msg;
+  to["header"]["stamp"]["sec"] = static_cast<int32_t>(p.header.stamp.sec);
+  to["header"]["stamp"]["nanosec"] = p.header.stamp.nsec;
+  to["header"]["frame_id"] = "map";
+  to["pose"]["position"]["x"] = p.pose.position.x;
+  to["pose"]["position"]["y"] = p.pose.position.y;
+  to["pose"]["position"]["z"] = p.pose.position.z;
+  to["pose"]["orientation"]["x"] = p.pose.orientation.x;
+  to["pose"]["orientation"]["y"] = p.pose.orientation.y;
+  to["pose"]["orientation"]["z"] = p.pose.orientation.z;
+  to["pose"]["orientation"]["w"] = p.pose.orientation.w;
 }
 
-soss::Message generate_plan_request_msg(
+xtypes::DynamicData generate_plan_request_msg(
+    const xtypes::DynamicType& request_type,
     const geometry_msgs::PoseStamped& start,
     const geometry_msgs::PoseStamped& goal,
     const float tolerance = 1e-3f)
 {
-  soss::Message msg;
-  msg.type = "nav_msgs/GetPlan:request";
-  msg.data["goal"] = soss::make_field<soss::Message>(generate_pose_msg(goal));
-  msg.data["start"] = soss::make_field<soss::Message>(generate_pose_msg(start));
-  msg.data["tolerance"] = soss::Convert<float>::make_soss_field(tolerance);
+  xtypes::DynamicData msg(request_type);
+  transform_pose_msg(goal, msg["goal"]);
+  transform_pose_msg(start, msg["start"]);
+  msg["tolerance"] = tolerance;
 
   return msg;
 }
@@ -156,12 +136,13 @@ TEST_CASE("Talk between ros1 and the mock middleware", "[ros1]")
   SECTION("Publish a pose and get it echoed back")
   {
     auto publisher = ros1.advertise<geometry_msgs::Pose>("transmit_pose", 10);
+    REQUIRE(publisher);
 
-    std::promise<soss::Message> msg_promise;
-    std::future<soss::Message> msg_future = msg_promise.get_future();
+    std::promise<xtypes::DynamicData> msg_promise;
+    std::future<xtypes::DynamicData> msg_future = msg_promise.get_future();
     std::mutex mock_sub_mutex;
     bool mock_sub_value_received = false;
-    auto mock_sub = [&](const soss::Message& msg)
+    auto mock_sub = [&](const xtypes::DynamicData& msg)
     {
       std::unique_lock<std::mutex> lock(mock_sub_mutex);
       if(mock_sub_value_received)
@@ -194,23 +175,17 @@ TEST_CASE("Talk between ros1 and the mock middleware", "[ros1]")
     // we should quit instead of waiting for the future and potentially hanging
     // forever.
     REQUIRE(msg_future.wait_for(0s) == std::future_status::ready);
-    soss::Message received_msg = msg_future.get();
+    xtypes::DynamicData received_msg = msg_future.get();
 
-    CHECK(received_msg.type == "geometry_msgs/Pose");
+    CHECK(received_msg.type().name() == "geometry_msgs/Pose");
 
-    soss::Message* position =
-        received_msg.data["position"].cast<soss::Message>();
-    REQUIRE(position);
-
-    soss::Message* orientation =
-        received_msg.data["orientation"].cast<soss::Message>();
-    REQUIRE(orientation);
+    xtypes::ReadableDynamicDataRef position = received_msg["position"];
+    xtypes::ReadableDynamicDataRef orientation = received_msg["orientation"];
 
     #define TEST_POSITION_OF( u ) \
     { \
-      const double* u = position->data[#u].cast<double>(); \
-      REQUIRE(u); \
-      CHECK_THAT(*u, WithinAbs(ros1_pose.position.u, tolerance)); \
+      const double u = position[#u]; \
+      CHECK_THAT(u, WithinAbs(ros1_pose.position.u, tolerance)); \
     }
 
     TEST_POSITION_OF(x);
@@ -260,15 +235,19 @@ TEST_CASE("Talk between ros1 and the mock middleware", "[ros1]")
 
     compare_poses(ros1_pose, received_pose);
   }
+
   SECTION("Request a plan and get it echoed back")
   {
+    // Get request type from ros1 middleware
+    const soss::TypeRegistry& ros1_types = *handle.type_registry("ros1");
+    const xtypes::DynamicType& request_type = *ros1_types.at("nav_msgs/GetPlan:request");
     // Create a plan
     nav_msgs::GetPlanResponse plan_response;
     plan_response.plan.header.stamp.sec = 266;
     plan_response.plan.header.stamp.nsec = 267;
     plan_response.plan.header.frame_id = "ros1_frame_string";
     for(int i=0 ; i < 5; ++i)
-      plan_response.plan.poses.push_back(generate_random_pose(i));
+      plan_response.plan.poses.push_back(generate_random_pose());
 
     std::promise<geometry_msgs::PoseStamped> promised_start;
     auto future_start = promised_start.get_future();
@@ -302,7 +281,8 @@ TEST_CASE("Talk between ros1 and the mock middleware", "[ros1]")
 
     ros::spinOnce();
 
-    soss::Message request_msg = generate_plan_request_msg(
+    xtypes::DynamicData request_msg = generate_plan_request_msg(
+          request_type,
           plan_response.plan.poses.front(),
           plan_response.plan.poses.back());
 
@@ -334,13 +314,13 @@ TEST_CASE("Talk between ros1 and the mock middleware", "[ros1]")
         break;
     }
     REQUIRE(future_response_msg.wait_for(0s) == std::future_status::ready);
-    const soss::Message response_msg = future_response_msg.get();
+    const xtypes::DynamicData response_msg = future_response_msg.get();
 
     // TODO(MXG): We could copy the request message that gets passed to here and
     // compare it against the original request message that was sent. This would
     // require implementing comparison operators for the soss::Message class.
     std::mutex serve_mutex;
-    soss::mock::serve("echo_plan", [&](const soss::Message&)
+    soss::mock::serve("echo_plan", [&](const xtypes::DynamicData&)
     {
       std::unique_lock<std::mutex> lock(serve_mutex);
       return response_msg;
@@ -358,6 +338,7 @@ TEST_CASE("Talk between ros1 and the mock middleware", "[ros1]")
     {
       compare_poses(response.plan.poses[i].pose,
                     plan_response.plan.poses[i].pose);
+      REQUIRE(response.plan.poses[i].header.frame_id == plan_response.plan.poses[i].header.frame_id);
     }
   }
 

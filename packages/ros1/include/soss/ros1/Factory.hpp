@@ -39,12 +39,24 @@ public:
   /// factories with this singleton so that
   static Factory& instance();
 
+  /// \brief Signature for subscription factories
+  using TypeFactory =
+      std::function<xtypes::DynamicType::Ptr()>;
+
+  /// \brief Register a subscription factory
+  void register_type_factory(
+      const std::string& message_type,
+      TypeFactory type_factory);
+
+  /// \brief Create a subscription using the factory for the relevant message type
+  xtypes::DynamicType::Ptr create_type(const std::string& message_type);
 
   /// \brief Signature for subscription factories
   using SubscriptionFactory =
       std::function<std::shared_ptr<void>(
         ros::NodeHandle& node,
         const std::string& topic_name,
+        const xtypes::DynamicType& message_type,
         TopicSubscriberSystem::SubscriptionCallback callback,
         uint32_t queue_size,
         const ros::TransportHints& transport_hints)>;
@@ -57,7 +69,7 @@ public:
   /// \brief Create a subscription using the factory for the relevant message
   /// type
   std::shared_ptr<void> create_subscription(
-      const std::string& message_type,
+      const xtypes::DynamicType& message_type,
       ros::NodeHandle& node,
       const std::string& topic_name,
       TopicSubscriberSystem::SubscriptionCallback callback,
@@ -80,7 +92,7 @@ public:
 
   /// \brief Create a publisher using the factory for the relevant message type
   std::shared_ptr<TopicPublisher> create_publisher(
-      const std::string& message_type,
+      const xtypes::DynamicType& message_type,
       ros::NodeHandle& node,
       const std::string& topic_name,
       uint32_t queue_size,
@@ -146,6 +158,10 @@ struct FactoryRegistrar
     (Factory::instance().*register_func)(type, factory);
   }
 };
+
+//==============================================================================
+using TypeFactoryRegistrar =
+  FactoryRegistrar<Factory::TypeFactory, &Factory::register_type_factory>;
 
 //==============================================================================
 using SubscriptionFactoryRegistrar =

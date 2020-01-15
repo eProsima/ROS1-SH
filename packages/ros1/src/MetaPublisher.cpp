@@ -33,7 +33,7 @@ public:
 
   MetaPublisher(
       StringTemplate&& topic_template,
-      const std::string& message_type,
+      const xtypes::DynamicType& message_type,
       ros::NodeHandle& node,
       uint32_t queue_size,
       bool latch,
@@ -47,7 +47,7 @@ public:
     // Do nothing
   }
 
-  bool publish(const soss::Message& message) override final
+  bool publish(const xtypes::DynamicData& message) override final
   {
     const std::string topic_name = _topic_template.compute_string(message);
 
@@ -68,7 +68,7 @@ public:
 private:
 
   const soss::StringTemplate _topic_template;
-  const std::string _message_type;
+  const xtypes::DynamicType& _message_type;
   ros::NodeHandle& _node;
   const uint32_t _queue_size;
   const bool _latch;
@@ -93,7 +93,7 @@ std::string make_detail_string(
 
 //==============================================================================
 std::shared_ptr<soss::TopicPublisher> make_meta_publisher(
-    const std::string& message_type,
+    const xtypes::DynamicType& message_type,
     ros::NodeHandle& node,
     const std::string& topic_name,
     uint32_t queue_size,
@@ -101,7 +101,7 @@ std::shared_ptr<soss::TopicPublisher> make_meta_publisher(
     const YAML::Node& configuration)
 {
   return std::make_shared<MetaPublisher>(
-      StringTemplate(topic_name, make_detail_string(topic_name, message_type)),
+      StringTemplate(topic_name, make_detail_string(topic_name, message_type.name())),
       message_type, node, queue_size, latch, configuration);
 }
 
