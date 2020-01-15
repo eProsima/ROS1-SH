@@ -1,0 +1,107 @@
+@startuml
+
+actor other_sh
+actor soss_core
+participant SystemHandle
+participant Factory
+collections type_libs
+entity roscpp
+
+== initialization ==
+soss_core -> SystemHandle: configure
+activate SystemHandle
+SystemHandle -> roscpp: __init__()
+SystemHandle -> roscpp: nodehandle()
+activate roscpp
+activate roscpp 
+SystemHandle <-- roscpp: status
+deactivate roscpp
+SystemHandle -> soss_core: search("ros1")
+activate soss_core
+SystemHandle <-- soss_core
+deactivate soss_core
+loop for all required type
+    SystemHandle -> soss_core: find_message_lib()
+    activate soss_core
+    SystemHandle <-- soss_core: status
+    deactivate soss_core
+    SystemHandle -> Factory: create_type()
+    activate Factory
+    Factory -> type_libs: type()
+    activate type_libs
+    Factory <-- type_libs: type
+    deactivate type_libs
+    SystemHandle <-- Factory: type
+    deactivate Factory
+end
+soss_core <-- SystemHandle: status
+deactivate SystemHandle
+
+soss_core -> SystemHandle: advertise
+activate SystemHandle
+SystemHandle -> Factory: create_publisher()
+activate Factory
+Factory -> type_libs: make_publisher()
+activate type_libs
+type_libs -> roscpp: create_publisher()
+activate roscpp
+type_libs <-- roscpp: status
+deactivate roscpp
+Factory <-- type_libs: Publisher
+deactivate type_libs
+SystemHandle <-- Factory: Publisher
+deactivate Factory
+soss_core <-- SystemHandle: status
+deactivate SystemHandle
+
+soss_core -> SystemHandle: subscribe
+activate SystemHandle
+SystemHandle -> Factory: create_subscriber()
+activate Factory
+Factory -> type_libs: make_subscriber()
+activate type_libs
+type_libs -> roscpp: create_subscriber()
+activate roscpp
+type_libs <-- roscpp: status
+deactivate roscpp
+Factory <-- type_libs: Subscriber
+deactivate type_libs
+SystemHandle <-- Factory: Subscriber
+deactivate Factory
+soss_core <-- SystemHandle: status
+deactivate SystemHandle
+
+== to ros1 ==
+roscpp -> type_libs: subscription_callback()
+activate type_libs
+type_libs -> type_libs: convert_to_xtype()
+type_libs -> other_sh: soss_subscription_cb()
+activate other_sh
+type_libs <-- other_sh: status
+deactivate other_sh
+roscpp <-- type_libs: status
+deactivate type_libs
+
+== from ros1 ==
+other_sh -> type_libs: publish()
+activate type_libs
+type_libs -> type_libs: converto_to_ros1()
+type_libs -> roscpp: publish()
+activate roscpp
+type_libs <-- roscpp: status
+deactivate roscpp
+other_sh <-- type_libs: status
+deactivate type_libs
+
+== while running ==
+soss_core -> SystemHandle: spin_once()
+activate SystemHandle
+SystemHandle -> roscpp: ok()
+activate roscpp
+SystemHandle <-- roscpp: status
+deactivate roscpp
+soss_core <-- SystemHandle: status
+deactivate SystemHandle
+
+
+@enduml
