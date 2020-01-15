@@ -13,6 +13,7 @@ endif()
 
 find_package(soss-core REQUIRED)
 find_package(soss-genmsg REQUIRED)
+find_package(xtypes REQUIRED)
 
 if(NOT CMAKE_CXX_STANDARD)
   # TODO(MXG): Remove this block and use target_compile_features(~)

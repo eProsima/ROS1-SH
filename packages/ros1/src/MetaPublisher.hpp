@@ -27,7 +27,7 @@ namespace ros1 {
 
 //==============================================================================
 std::shared_ptr<TopicPublisher> make_meta_publisher(
-    const std::string& message_type,
+    const xtypes::DynamicType& message_type,
     ros::NodeHandle& node,
     const std::string& topic_name,
     uint32_t queue_size,
