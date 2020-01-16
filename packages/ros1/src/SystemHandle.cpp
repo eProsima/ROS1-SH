@@ -110,7 +110,7 @@ bool SystemHandle::configure(
       continue;
     }
 
-    success = register_type(type);
+    success &= register_type(type);
   }
 
   for(const std::string& type : types.services)
@@ -135,7 +135,7 @@ bool SystemHandle::configure(
       continue;
     }
 
-    success = register_type(type);
+    success &= register_type(type);
   }
 
   return success;
