@@ -13,9 +13,13 @@ except ImportError:
 import argparse
 import copy
 import em
-from io import BytesIO
 import os
 import sys
+
+if sys.version_info[0] > 2:
+    from io import StringIO as BufferIO
+else:
+    from io import BytesIO as BufferIO
 
 
 g_msg_context = MsgContext()
@@ -76,7 +80,7 @@ def generate_file(template, destination, context):
     filename = '.'.join(base_name_components)
     output_file_path = '/'.join([destination, filename])
 
-    output_buffer = BytesIO()
+    output_buffer = BufferIO()
     interpreter = em.Interpreter(output=output_buffer, globals=copy.deepcopy(context))
     interpreter.file(open(template, 'r'))
 

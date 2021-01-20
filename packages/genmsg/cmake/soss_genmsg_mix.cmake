@@ -70,7 +70,7 @@ function(soss_genmsg_mix)
   soss_mix_generator(
     IDL_TYPE genmsg
     SCRIPT
-      INTERPRETER python2
+      INTERPRETER "python$ENV{ROS_PYTHON_VERSION}"
       FIND ${SOSS_GENMSG_FIND_PACKAGE_INFO_SCRIPT}
       GENERATE ${SOSS_GENMSG_GENERATE_SCRIPT}
     PACKAGES ${_ARG_PACKAGES}
