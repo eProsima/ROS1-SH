@@ -114,16 +114,8 @@ void compare_poses(
     COMPARE_POSES_TEST_ORIENTATION_COMPONENT(z);
 }
 
-void launch_roscore()
-{
-    exec("roscore");
-}
-
 TEST(ROS1, Publish_subscribe_between_ros1_and_mock)
 {
-    std::thread roscore_thread(launch_roscore);
-    roscore_thread.detach();
-
     using namespace std::chrono_literals;
 
     const double tolerance = 1e-8;
