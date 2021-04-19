@@ -1,8 +1,8 @@
-// generated from soss/cpp/ros1/resource/soss__ros1__message.cpp.em
+// generated from is-ros1/resources/convert__msg.cpp.em
 // generated code does not contain a copyright notice
 
 @#######################################################################
-@# EmPy template for generating soss/genmsg/ros1/<package>/src/msg/convert__msg__<msg>.cpp files
+@# EmPy template for generating is/genmsg/ros1/<package>/src/msg/convert__msg__<msg>.cpp files
 @#
 @# Context:
 @#  - spec (genmsg.MsgSpec)
@@ -20,7 +20,7 @@
 namespace_parts = ['convert', package, 'msg', type]
 namespace_variable = '__'.join(namespace_parts)
 
-conversion_dependency = 'soss/genmsg/ros1/{}/msg/convert__msg__{}.hpp'.format(
+conversion_dependency = 'is/genmsg/ros1/{}/msg/convert__msg__{}.hpp'.format(
     package, type)
 }@
 
@@ -28,119 +28,126 @@ conversion_dependency = 'soss/genmsg/ros1/{}/msg/convert__msg__{}.hpp'.format(
 #include <@(conversion_dependency)>
 
 // Include the Factory header so we can add this message type to the Factory
-#include <soss/ros1/Factory.hpp>
+#include <is/sh/ros1/Factory.hpp>
 
 // Include the NodeHandle API so we can subscribe and advertise
 #include <ros/node_handle.h>
 
-namespace soss {
+// TODO(jamoralp): Add utils::Logger traces here
+namespace eprosima {
+namespace is {
+namespace sh {
 namespace ros1 {
 namespace @(namespace_variable) {
 
 //==============================================================================
 namespace {
-TypeFactoryRegistrar register_type(g_msg_name, &type);
-} // anonymous namespace
+TypeToFactoryRegistrar register_type(g_msg_name, &type);
+} //  anonymous namespace
 
 //==============================================================================
 class Subscription final
 {
 public:
 
-  Subscription(
-      ros::NodeHandle& node,
-      const std::string& topic_name,
-      const xtypes::DynamicType& message_type,
-      TopicSubscriberSystem::SubscriptionCallback callback,
-      uint32_t queue_size,
-      const ros::TransportHints& transport_hints)
-    : _callback(std::move(callback))
-    , _message_type(message_type)
-  {
+    Subscription(
+            ros::NodeHandle& node,
+            const std::string& topic_name,
+            const xtypes::DynamicType& message_type,
+            TopicSubscriberSystem::SubscriptionCallback callback,
+            uint32_t queue_size,
+            const ros::TransportHints& transport_hints)
+        : _callback(std::move(callback))
+        , _message_type(message_type)
+    {
 
-    _subscription = node.subscribe(
-        topic_name, queue_size, &Subscription::subscription_callback, this,
-        transport_hints);
-  }
+        _subscription = node.subscribe(
+            topic_name, queue_size, &Subscription::subscription_callback, this,
+            transport_hints);
+    }
 
 private:
 
-  void subscription_callback(const Ros1_MsgPtr& msg)
-  {
-    xtypes::DynamicData data(_message_type);
-    convert_to_xtype(*msg, data);
-    _callback(data);
-  }
+    void subscription_callback(
+            const Ros1_MsgPtr& msg)
+    {
+        xtypes::DynamicData data(_message_type);
+        convert_to_xtype(*msg, data);
+        _callback(data);
+    }
 
-  const std::string _topic;
+    const std::string _topic;
 
-  TopicSubscriberSystem::SubscriptionCallback _callback;
+    TopicSubscriberSystem::SubscriptionCallback _callback;
 
-  const xtypes::DynamicType& _message_type;
+    const xtypes::DynamicType& _message_type;
 
-  ros::Subscriber _subscription;
+    ros::Subscriber _subscription;
 };
 
 //==============================================================================
 std::shared_ptr<void> subscribe(
-    ros::NodeHandle& node,
-    const std::string& topic_name,
-    const xtypes::DynamicType& message_type,
-    TopicSubscriberSystem::SubscriptionCallback callback,
-    const uint32_t queue_size,
-    const ros::TransportHints& transport_hints)
+        ros::NodeHandle& node,
+        const std::string& topic_name,
+        const xtypes::DynamicType& message_type,
+        TopicSubscriberSystem::SubscriptionCallback callback,
+        const uint32_t queue_size,
+        const ros::TransportHints& transport_hints)
 {
-  return std::make_shared<Subscription>(
+    return std::make_shared<Subscription>(
         node, topic_name, message_type, std::move(callback), queue_size, transport_hints);
 }
 
 //==============================================================================
 namespace {
-SubscriptionFactoryRegistrar register_subscriber(g_msg_name, &subscribe);
-} // anonymous namespace
+SubscriptionToFactoryRegistrar register_subscriber(g_msg_name, &subscribe);
+} //  anonymous namespace
 
 //==============================================================================
-class Publisher final : public virtual soss::TopicPublisher
+class Publisher final : public virtual is::TopicPublisher
 {
 public:
 
-  Publisher(
-      ros::NodeHandle& node,
-      const std::string& topic_name,
-      uint32_t queue_size,
-      bool latch)
-  {
-    _publisher = node.advertise<Ros1_Msg>(topic_name, queue_size, latch);
-  }
+    Publisher(
+            ros::NodeHandle& node,
+            const std::string& topic_name,
+            uint32_t queue_size,
+            bool latch)
+    {
+        _publisher = node.advertise<Ros1_Msg>(topic_name, queue_size, latch);
+    }
 
-  bool publish(const xtypes::DynamicData& message) override
-  {
-    Ros1_Msg ros1_msg;
-    convert_to_ros1(message, ros1_msg);
+    bool publish(
+            const xtypes::DynamicData& message) override
+    {
+        Ros1_Msg ros1_msg;
+        convert_to_ros1(message, ros1_msg);
 
-    _publisher.publish(ros1_msg);
-    return true;
-  }
+        _publisher.publish(ros1_msg);
+        return true;
+    }
 
 private:
 
-  ros::Publisher _publisher;
+    ros::Publisher _publisher;
 };
 
 //==============================================================================
-std::shared_ptr<soss::TopicPublisher> make_publisher(
-    ros::NodeHandle& node,
-    const std::string& topic_name,
-    const uint32_t queue_size,
-    const bool latch)
+std::shared_ptr<is::TopicPublisher> make_publisher(
+        ros::NodeHandle& node,
+        const std::string& topic_name,
+        const uint32_t queue_size,
+        const bool latch)
 {
-  return std::make_shared<Publisher>(node, topic_name, queue_size, latch);
+    return std::make_shared<Publisher>(node, topic_name, queue_size, latch);
 }
 
 namespace {
-PublisherFactoryRegistrar register_publisher(g_msg_name, &make_publisher);
-}
+PublisherToFactoryRegistrar register_publisher(g_msg_name, &make_publisher);
+} //  anonymous namespace
 
-} // namespace @(namespace_variable)
-} // namespace ros1
-} // namespace soss
+} //  namespace @(namespace_variable)
+} //  namespace ros1
+} //  namespace sh
+} //  namespace is
+} //  namespace eprosima
