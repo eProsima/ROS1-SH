@@ -223,7 +223,7 @@ SystemHandle::~SystemHandle()
 bool SystemHandle::subscribe(
         const std::string& topic_name,
         const xtypes::DynamicType& message_type,
-        SubscriptionCallback callback,
+        SubscriptionCallback* callback,
         const YAML::Node& configuration)
 {
     int queue_size = configuration["queue_size"].as<int>(default_queue_size);
@@ -306,7 +306,7 @@ std::shared_ptr<TopicPublisher> SystemHandle::advertise(
 bool SystemHandle::create_client_proxy(
         const std::string& service_name,
         const xtypes::DynamicType& service_type,
-        RequestCallback callback,
+        RequestCallback* callback,
         const YAML::Node& /*configuration*/)
 {
     auto client_proxy = Factory::instance().create_client_proxy(

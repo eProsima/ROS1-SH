@@ -109,7 +109,7 @@ public:
                         ros::NodeHandle& node,
                         const std::string& topic_name,
                         const xtypes::DynamicType& message_type,
-                        TopicSubscriberSystem::SubscriptionCallback callback,
+                        TopicSubscriberSystem::SubscriptionCallback* callback,
                         uint32_t queue_size,
                         const ros::TransportHints& transport_hints)>;
 
@@ -147,7 +147,7 @@ public:
             const xtypes::DynamicType& topic_type,
             ros::NodeHandle& node,
             const std::string& topic_name,
-            TopicSubscriberSystem::SubscriptionCallback callback,
+            TopicSubscriberSystem::SubscriptionCallback* callback,
             uint32_t queue_size,
             const ros::TransportHints& transport_hints);
 
@@ -222,7 +222,7 @@ public:
             std::function<std::shared_ptr<ServiceClient>(
                         ros::NodeHandle& node,
                         const std::string& service_name,
-                        const ServiceClientSystem::RequestCallback& callback)>;
+                        ServiceClientSystem::RequestCallback* callback)>;
 
     /**
      * @brief Register a ROS 1 service client builder within the Factory.
@@ -256,7 +256,7 @@ public:
             const std::string& service_response_type,
             ros::NodeHandle& node,
             const std::string& service_name,
-            const ServiceClientSystem::RequestCallback& callback);
+            ServiceClientSystem::RequestCallback* callback);
 
     /**
      * @brief Signature for the method that will be used to create a ROS 1 service server

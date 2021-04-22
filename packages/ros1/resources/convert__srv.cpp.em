@@ -194,7 +194,7 @@ public:
     ClientProxy(
             ros::NodeHandle& node,
             const std::string& service_name,
-            const ServiceClientSystem::RequestCallback& callback)
+            ServiceClientSystem::RequestCallback* callback)
         : _callback(callback)
         , _handle(std::make_shared<PromiseHolder>())
         , _request_type(request_type())
@@ -227,7 +227,7 @@ private:
         _handle->promise = &response_promise;
 
         std::future<Ros1_Response> future_response = response_promise.get_future();
-        _callback(_request_data, *this, _handle);
+        (*_callback)(_request_data, *this, _handle);
 
         future_response.wait();
 
@@ -241,7 +241,7 @@ private:
         std::promise<Ros1_Response>* promise;
     };
 
-    const ServiceClientSystem::RequestCallback _callback;
+    ServiceClientSystem::RequestCallback* _callback;
     const std::shared_ptr<PromiseHolder> _handle;
     const xtypes::DynamicType::Ptr _request_type;
     xtypes::DynamicData _request_data;
@@ -254,7 +254,7 @@ private:
 std::shared_ptr<is::ServiceClient> make_client(
         ros::NodeHandle& node,
         const std::string& service_name,
-        const ServiceClientSystem::RequestCallback& callback)
+        ServiceClientSystem::RequestCallback* callback)
 {
     return std::make_shared<ClientProxy>(node, service_name, callback);
 }
