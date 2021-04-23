@@ -71,7 +71,7 @@ public:
             const xtypes::DynamicType& topic_type,
             ros::NodeHandle& node,
             const std::string& topic_name,
-            TopicSubscriberSystem::SubscriptionCallback callback,
+            TopicSubscriberSystem::SubscriptionCallback* callback,
             uint32_t queue_size,
             const ros::TransportHints& transport_hints)
     {
@@ -85,7 +85,7 @@ public:
             return nullptr;
         }
 
-        return it->second(node, topic_name, topic_type, std::move(callback),
+        return it->second(node, topic_name, topic_type, callback,
                        queue_size, transport_hints);
     }
 
@@ -127,7 +127,7 @@ public:
             const std::string& service_response_type,
             ros::NodeHandle& node,
             const std::string& service_name,
-            const ServiceClientSystem::RequestCallback& callback)
+            ServiceClientSystem::RequestCallback* callback)
     {
         auto it = _client_proxy_factories.find(service_response_type);
         if (it == _client_proxy_factories.end())
@@ -216,12 +216,12 @@ std::shared_ptr<void> Factory::create_subscription(
         const xtypes::DynamicType& topic_type,
         ros::NodeHandle& node,
         const std::string& topic_name,
-        TopicSubscriberSystem::SubscriptionCallback callback,
+        TopicSubscriberSystem::SubscriptionCallback* callback,
         uint32_t queue_size,
         const ros::TransportHints& transport_hints)
 {
     return _pimpl->create_subscription(
-        topic_type, node, topic_name, std::move(callback),
+        topic_type, node, topic_name, callback,
         queue_size, transport_hints);
 }
 
@@ -260,7 +260,7 @@ std::shared_ptr<ServiceClient> Factory::create_client_proxy(
         const std::string& service_response_type,
         ros::NodeHandle& node,
         const std::string& service_name,
-        const ServiceClientSystem::RequestCallback& callback)
+        ServiceClientSystem::RequestCallback* callback)
 {
     return _pimpl->create_client_proxy(
         service_response_type, node, service_name, callback);

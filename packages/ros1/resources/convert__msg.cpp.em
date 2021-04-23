@@ -54,10 +54,10 @@ public:
             ros::NodeHandle& node,
             const std::string& topic_name,
             const xtypes::DynamicType& message_type,
-            TopicSubscriberSystem::SubscriptionCallback callback,
+            TopicSubscriberSystem::SubscriptionCallback* callback,
             uint32_t queue_size,
             const ros::TransportHints& transport_hints)
-        : _callback(std::move(callback))
+        : _callback(callback)
         , _message_type(message_type)
     {
 
@@ -73,12 +73,12 @@ private:
     {
         xtypes::DynamicData data(_message_type);
         convert_to_xtype(*msg, data);
-        _callback(data);
+        (*_callback)(data);
     }
 
     const std::string _topic;
 
-    TopicSubscriberSystem::SubscriptionCallback _callback;
+    TopicSubscriberSystem::SubscriptionCallback* _callback;
 
     const xtypes::DynamicType& _message_type;
 
@@ -90,12 +90,12 @@ std::shared_ptr<void> subscribe(
         ros::NodeHandle& node,
         const std::string& topic_name,
         const xtypes::DynamicType& message_type,
-        TopicSubscriberSystem::SubscriptionCallback callback,
+        TopicSubscriberSystem::SubscriptionCallback* callback,
         const uint32_t queue_size,
         const ros::TransportHints& transport_hints)
 {
     return std::make_shared<Subscription>(
-        node, topic_name, message_type, std::move(callback), queue_size, transport_hints);
+        node, topic_name, message_type, callback, queue_size, transport_hints);
 }
 
 //==============================================================================
