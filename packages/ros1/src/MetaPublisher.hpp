@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2019 Open Source Robotics Foundation
+ * Copyright (C) 2020 - present Proyectos y Sistemas de Mantenimiento SL (eProsima).
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,28 +14,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
-#ifndef SOSS__ROS1__SRC__METAPUBLISHER_HPP
-#define SOSS__ROS1__SRC__METAPUBLISHER_HPP
+#ifndef _IS_SH_ROS1__INTERNAL__METAPUBLISHER_HPP_
+#define _IS_SH_ROS1__INTERNAL__METAPUBLISHER_HPP_
 
-#include <soss/SystemHandle.hpp>
+#include <is/systemhandle/SystemHandle.hpp>
 
 #include <ros/node_handle.h>
 
-namespace soss {
+namespace eprosima {
+namespace is {
+namespace sh {
 namespace ros1 {
 
 //==============================================================================
 std::shared_ptr<TopicPublisher> make_meta_publisher(
-    const xtypes::DynamicType& message_type,
-    ros::NodeHandle& node,
-    const std::string& topic_name,
-    uint32_t queue_size,
-    bool latch,
-    const YAML::Node& configuration);
+        const eprosima::xtypes::DynamicType& message_type,
+        ros::NodeHandle& node,
+        const std::string& topic_name,
+        uint32_t queue_size,
+        bool latch,
+        const YAML::Node& configuration);
 
-} // namespace ros1
-} // namespace soss
+} //  namespace ros1
+} //  namespace sh
+} //  namespace is
+} //  namespace eprosima
 
-#endif // SOSS__ROS1__SRC__METAPUBLISHER_HPP
+#endif //  _IS_SH_ROS1__INTERNAL__METAPUBLISHER_HPP_

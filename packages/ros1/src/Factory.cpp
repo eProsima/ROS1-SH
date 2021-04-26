@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2019 Open Source Robotics Foundation
+ * Copyright (C) 2020 - present Proyectos y Sistemas de Mantenimiento SL (eProsima).
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,269 +14,284 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
-#include <soss/ros1/Factory.hpp>
+#include <is/sh/ros1/Factory.hpp>
+
+#include <is/utils/Log.hpp>
 
 #include <unordered_map>
 
-namespace soss {
+namespace eprosima {
+namespace is {
+namespace sh {
 namespace ros1 {
 
 //==============================================================================
 class Factory::Implementation
 {
 public:
-  //============================================================================
-  void register_type_factory(
-      const std::string& message_type,
-      TypeFactory type_factory)
-  {
-    _type_factories[message_type] = std::move(type_factory);
-  }
 
-  //============================================================================
-  xtypes::DynamicType::Ptr create_type(
-      const std::string& message_type)
-  {
-    auto it = _type_factories.find(message_type);
-    if (it == _type_factories.end())
+    Implementation()
+        : logger_("is::sh::ROS1::Factory")
     {
-      std::cerr << "[soss-ros1] could not find a factory type named ["
-                << message_type << "] to create!\n";
-      return xtypes::DynamicType::Ptr();
-    }
-    return it->second();
-  }
-
-  //============================================================================
-  void register_subscription_factory(
-      const std::string& message_type,
-      SubscriptionFactory subscriber_factory)
-  {
-    _subscription_factories[message_type] = std::move(subscriber_factory);
-  }
-
-  //============================================================================
-  std::shared_ptr<void> create_subscription(
-      const xtypes::DynamicType& message_type,
-      ros::NodeHandle& node,
-      const std::string& topic_name,
-      TopicSubscriberSystem::SubscriptionCallback callback,
-      uint32_t queue_size,
-      const ros::TransportHints& transport_hints)
-  {
-    auto it = _subscription_factories.find(message_type.name());
-    if(it == _subscription_factories.end())
-    {
-      std::cerr << "[soss-ros1] Could not find a message type named ["
-                << message_type.name() << "] to load!\n";
-      return nullptr;
     }
 
-    return it->second(node, topic_name, message_type, std::move(callback),
-                      queue_size, transport_hints);
-  }
-
-  //============================================================================
-  void register_publisher_factory(
-      const std::string& message_type,
-      PublisherFactory publisher_factory)
-  {
-    _publisher_factories[message_type] = std::move(publisher_factory);
-  }
-
-  //============================================================================
-  std::shared_ptr<TopicPublisher> create_publisher(
-      const xtypes::DynamicType& message_type,
-      ros::NodeHandle& node,
-      const std::string& topic_name,
-      uint32_t queue_size,
-      bool latch)
-  {
-    auto it = _publisher_factories.find(message_type.name());
-    if(it == _publisher_factories.end())
+    void register_type_factory(
+            const std::string& type_name,
+            RegisterTypeToFactory register_type_func)
     {
-      std::cerr << "[soss-ros1] Could not find a message type named ["
-                << message_type.name() << "] to load!\n";
-      return nullptr;
+        _type_factories[type_name] = std::move(register_type_func);
     }
 
-    return it->second(node, topic_name, queue_size, latch);
-  }
-
-  //============================================================================
-  void register_client_proxy_factory(
-      const std::string& service_type,
-      ServiceClientFactory client_proxy_factory)
-  {
-    _client_proxy_factories[service_type] = std::move(client_proxy_factory);
-  }
-
-  //============================================================================
-  std::shared_ptr<ServiceClient> create_client_proxy(
-      const std::string& service_type,
-      ros::NodeHandle& node,
-      const std::string& service_name,
-      const ServiceClientSystem::RequestCallback& callback)
-  {
-    auto it = _client_proxy_factories.find(service_type);
-    if(it == _client_proxy_factories.end())
+    xtypes::DynamicType::Ptr create_type(
+            const std::string& type_name)
     {
-      std::cerr << "[soss-ros1] Could not find a service type named ["
-                << service_type << "] to load!\n";
-      return nullptr;
+        auto it = _type_factories.find(type_name);
+        if (it == _type_factories.end())
+        {
+            logger_ << utils::Logger::Level::ERROR
+                    << "'create_type' could not find a factory type named '"
+                    << type_name << "' to create!" << std::endl;
+
+            return xtypes::DynamicType::Ptr();
+        }
+
+        return it->second();
     }
 
-    return it->second(node, service_name, callback);
-  }
-
-  //============================================================================
-  void register_server_proxy_factory(
-      const std::string& service_type,
-      ServiceProviderFactory server_proxy_factory)
-  {
-    _server_proxy_factories[service_type] = std::move(server_proxy_factory);
-  }
-
-  //============================================================================
-  std::shared_ptr<ServiceProvider> create_server_proxy(
-      const std::string& service_type,
-      ros::NodeHandle& node,
-      const std::string& service_name)
-  {
-    auto it = _server_proxy_factories.find(service_type);
-    if(it == _server_proxy_factories.end())
+    void register_subscription_factory(
+            const std::string& topic_type,
+            RegisterSubscriptionToFactory register_sub_func)
     {
-      std::cerr << "[soss-ros1] Could not find a service type named ["
-                << service_type << "] to load!\n";
-      return nullptr;
+        _subscription_factories[topic_type] = std::move(register_sub_func);
     }
 
-    return it->second(node, service_name);
-  }
+    std::shared_ptr<void> create_subscription(
+            const xtypes::DynamicType& topic_type,
+            ros::NodeHandle& node,
+            const std::string& topic_name,
+            TopicSubscriberSystem::SubscriptionCallback* callback,
+            uint32_t queue_size,
+            const ros::TransportHints& transport_hints)
+    {
+        auto it = _subscription_factories.find(topic_type.name());
+        if (it == _subscription_factories.end())
+        {
+            logger_ << utils::Logger::Level::ERROR
+                    << "create_subscription' could not find a message type named '"
+                    << topic_type.name() << "' to load!" << std::endl;
+
+            return nullptr;
+        }
+
+        return it->second(node, topic_name, topic_type, callback,
+                       queue_size, transport_hints);
+    }
+
+    void register_publisher_factory(
+            const std::string& topic_type,
+            RegisterPublisherToFactory register_pub_func)
+    {
+        _publisher_factories[topic_type] = std::move(register_pub_func);
+    }
+
+    std::shared_ptr<TopicPublisher> create_publisher(
+            const xtypes::DynamicType& topic_type,
+            ros::NodeHandle& node,
+            const std::string& topic_name,
+            uint32_t queue_size,
+            bool latch)
+    {
+        auto it = _publisher_factories.find(topic_type.name());
+        if (it == _publisher_factories.end())
+        {
+            logger_ << utils::Logger::Level::ERROR
+                    << "'create_publisher': could not find a message type named '"
+                    << topic_type.name() << "' to load!" << std::endl;
+
+            return nullptr;
+        }
+
+        return it->second(node, topic_name, queue_size, latch);
+    }
+
+    void register_client_proxy_factory(
+            const std::string& service_response_type,
+            RegisterServiceClientToFactory register_service_client_func)
+    {
+        _client_proxy_factories[service_response_type] = std::move(register_service_client_func);
+    }
+
+    std::shared_ptr<ServiceClient> create_client_proxy(
+            const std::string& service_response_type,
+            ros::NodeHandle& node,
+            const std::string& service_name,
+            ServiceClientSystem::RequestCallback* callback)
+    {
+        auto it = _client_proxy_factories.find(service_response_type);
+        if (it == _client_proxy_factories.end())
+        {
+            logger_ << utils::Logger::Level::ERROR
+                    << "'create_client_proxy': could not find a service type named '"
+                    << service_response_type << "' to load!" << std::endl;
+
+            return nullptr;
+        }
+
+        return it->second(node, service_name, callback);
+    }
+
+    void register_server_proxy_factory(
+            const std::string& service_request_type,
+            RegisterServiceProviderToFactory register_service_server_func)
+    {
+        _server_proxy_factories[service_request_type] = std::move(register_service_server_func);
+    }
+
+    std::shared_ptr<ServiceProvider> create_server_proxy(
+            const std::string& service_request_type,
+            ros::NodeHandle& node,
+            const std::string& service_name)
+    {
+        auto it = _server_proxy_factories.find(service_request_type);
+        if (it == _server_proxy_factories.end())
+        {
+            logger_ << utils::Logger::Level::ERROR
+                    << "'create_server_proxy': could not find a service type named '"
+                    << service_request_type << "' to load!" << std::endl;
+
+            return nullptr;
+        }
+
+        return it->second(node, service_name);
+    }
 
 private:
 
-  std::unordered_map<std::string, TypeFactory> _type_factories;
-  std::unordered_map<std::string, SubscriptionFactory> _subscription_factories;
-  std::unordered_map<std::string, PublisherFactory> _publisher_factories;
-  std::unordered_map<std::string, ServiceClientFactory> _client_proxy_factories;
-  std::unordered_map<std::string, ServiceProviderFactory> _server_proxy_factories;
+    std::unordered_map<std::string, RegisterTypeToFactory> _type_factories;
+    std::unordered_map<std::string, RegisterSubscriptionToFactory> _subscription_factories;
+    std::unordered_map<std::string, RegisterPublisherToFactory> _publisher_factories;
+    std::unordered_map<std::string, RegisterServiceClientToFactory> _client_proxy_factories;
+    std::unordered_map<std::string, RegisterServiceProviderToFactory> _server_proxy_factories;
+
+    utils::Logger logger_;
 
 };
 
 //==============================================================================
 Factory& Factory::instance()
 {
-  static Factory factory;
-  return factory;
+    static Factory factory;
+    return factory;
 }
 
 //==============================================================================
 void Factory::register_type_factory(
-    const std::string& message_type,
-    TypeFactory type_factory)
+        const std::string& type_name,
+        RegisterTypeToFactory register_type_func)
 {
-  _pimpl->register_type_factory(
-        message_type, std::move(type_factory));
+    _pimpl->register_type_factory(
+        type_name, std::move(register_type_func));
 }
 
 //==============================================================================
 xtypes::DynamicType::Ptr Factory::create_type(
-    const std::string& message_type)
+        const std::string& type_name)
 {
-  return _pimpl->create_type(message_type);
+    return _pimpl->create_type(type_name);
 }
 
 //==============================================================================
 void Factory::register_subscription_factory(
-    const std::string& message_type,
-    SubscriptionFactory subscriber_factory)
+        const std::string& topic_type,
+        RegisterSubscriptionToFactory register_sub_func)
 {
-  _pimpl->register_subscription_factory(
-        message_type, std::move(subscriber_factory));
+    _pimpl->register_subscription_factory(
+        topic_type, std::move(register_sub_func));
 }
 
 //==============================================================================
 std::shared_ptr<void> Factory::create_subscription(
-    const xtypes::DynamicType& message_type,
-    ros::NodeHandle& node,
-    const std::string& topic_name,
-    TopicSubscriberSystem::SubscriptionCallback callback,
-    uint32_t queue_size,
-    const ros::TransportHints& transport_hints)
+        const xtypes::DynamicType& topic_type,
+        ros::NodeHandle& node,
+        const std::string& topic_name,
+        TopicSubscriberSystem::SubscriptionCallback* callback,
+        uint32_t queue_size,
+        const ros::TransportHints& transport_hints)
 {
-  return _pimpl->create_subscription(
-        message_type, node, topic_name, std::move(callback),
+    return _pimpl->create_subscription(
+        topic_type, node, topic_name, callback,
         queue_size, transport_hints);
 }
 
 //==============================================================================
 void Factory::register_publisher_factory(
-    const std::string& message_type,
-    PublisherFactory publisher_factory)
+        const std::string& topic_type,
+        RegisterPublisherToFactory register_pub_func)
 {
-  _pimpl->register_publisher_factory(
-        message_type, std::move(publisher_factory));
+    _pimpl->register_publisher_factory(
+        topic_type, std::move(register_pub_func));
 }
 
 //==============================================================================
 std::shared_ptr<TopicPublisher> Factory::create_publisher(
-    const xtypes::DynamicType& message_type,
-    ros::NodeHandle& node,
-    const std::string& topic_name,
-    uint32_t queue_size,
-    bool latch)
+        const xtypes::DynamicType& topic_type,
+        ros::NodeHandle& node,
+        const std::string& topic_name,
+        uint32_t queue_size,
+        bool latch)
 {
-  return _pimpl->create_publisher(
-        message_type, node, topic_name, queue_size, latch);
+    return _pimpl->create_publisher(
+        topic_type, node, topic_name, queue_size, latch);
 }
 
 //==============================================================================
 void Factory::register_client_proxy_factory(
-    const std::string& service_type,
-    ServiceClientFactory client_proxy_factory)
+        const std::string& service_response_type,
+        RegisterServiceClientToFactory register_service_client_func)
 {
-  _pimpl->register_client_proxy_factory(
-        service_type, std::move(client_proxy_factory));
+    _pimpl->register_client_proxy_factory(
+        service_response_type, std::move(register_service_client_func));
 }
 
 //==============================================================================
 std::shared_ptr<ServiceClient> Factory::create_client_proxy(
-    const std::string& service_type,
-    ros::NodeHandle& node,
-    const std::string& service_name,
-    const ServiceClientSystem::RequestCallback& callback)
+        const std::string& service_response_type,
+        ros::NodeHandle& node,
+        const std::string& service_name,
+        ServiceClientSystem::RequestCallback* callback)
 {
-  return _pimpl->create_client_proxy(
-        service_type, node, service_name, callback);
+    return _pimpl->create_client_proxy(
+        service_response_type, node, service_name, callback);
 }
 
 //==============================================================================
 void Factory::register_server_proxy_factory(
-    const std::string& service_type,
-    ServiceProviderFactory server_proxy_factory)
+        const std::string& service_request_type,
+        RegisterServiceProviderToFactory register_service_server_func)
 {
-  _pimpl->register_server_proxy_factory(
-        service_type, std::move(server_proxy_factory));
+    _pimpl->register_server_proxy_factory(
+        service_request_type, std::move(register_service_server_func));
 }
 
 //==============================================================================
 std::shared_ptr<ServiceProvider> Factory::create_server_proxy(
-    const std::string& service_type,
-    ros::NodeHandle& node,
-    const std::string& service_name)
+        const std::string& service_request_type,
+        ros::NodeHandle& node,
+        const std::string& service_name)
 {
-  return _pimpl->create_server_proxy(service_type, node, service_name);
+    return _pimpl->create_server_proxy(service_request_type, node, service_name);
 }
 
 //==============================================================================
 Factory::Factory()
-  : _pimpl(new Implementation)
+    : _pimpl(new Implementation)
 {
-  // Do nothing
+    // Do nothing
 }
 
-} // namespace ros1
-} // namespace soss
+} //  namespace ros1
+} //  namespace sh
+} //  namespace is
+} //  namespace eprosima

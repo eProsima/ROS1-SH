@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2019 Open Source Robotics Foundation
+ * Copyright (C) 2020 - present Proyectos y Sistemas de Mantenimiento SL (eProsima).
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,235 +14,360 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #include "SystemHandle.hpp"
 #include "MetaPublisher.hpp"
 
-#include <soss/ros1/Factory.hpp>
+#include <is/sh/ros1/Factory.hpp>
 
-#include <soss/Mix.hpp>
-#include <soss/Search.hpp>
+#include <is/core/runtime/MiddlewareInterfaceExtension.hpp>
+#include <is/core/runtime/Search.hpp>
 
-namespace soss {
+#include <ros/this_node.h>
+
+namespace eprosima {
+namespace is {
+namespace sh {
 namespace ros1 {
 
 //==============================================================================
-SystemHandle::SystemHandle()
+void SystemHandle::print_missing_mix_file(
+        const std::string& msg_or_srv,
+        const std::string& type,
+        const std::vector<std::string>& checked_paths)
 {
-  // Do nothing
+    _logger << utils::Logger::Level::ERROR
+            << "Could not find .mix file for " << msg_or_srv << " type: '"
+            << type << "'.\n -- Make sure that you have generated "
+            << "the 'is-ros1' extension for that message type by calling "
+            << "'is_ros1_genmsg_mix(PACKAGES <package> MIDDLEWARES ros1)' "
+            << "in your build system!" << std::endl;
+
+    _logger << utils::Logger::Level::DEBUG
+            << " -- Checked locations (these files did not exist or could not be accessed):\n";
+
+    for (const std::string& checked_path : checked_paths)
+    {
+        _logger << "\t- " << checked_path << "\n";
+    }
+    _logger << std::endl;
 }
 
 //==============================================================================
-// TODO(MXG): Consider refactoring this function so that we only need one
-// implementation between the ros1 and ros2 plugins
-void print_missing_mix_file(
-    const std::string& msg_or_srv,
-    const std::string& type,
-    const std::vector<std::string>& /*checked_paths*/)
+SystemHandle::SystemHandle()
+    : _logger("is::sh::ROS1")
 {
-  std::string error = "soss-ros1 could not find .mix file for " + msg_or_srv
-      + " type: " + type +
-      "\n -- Make sure that you have generated the soss-ros1 extension for "
-      "that message type by calling "
-      "soss_genmsg_mix(PACKAGES <package> MIDDLEWARES ros1) "
-      "in your build system!\n";
-
-//  // TODO(MXG): Introduce a way for users to request a "debug", especially from
-//  // the command line. When debug mode is active, this should be printed out.
-//  error += " -- Checked locations (these files did not exist or could not be accessed):\n";
-//  for(const auto& p : checked_paths)
-//    error += "     - " + p + "\n";
-
-  std::cerr << error;
 }
 
 //==============================================================================
 bool SystemHandle::configure(
-    const RequiredTypes& types,
-    const YAML::Node& configuration,
-    TypeRegistry& type_registry)
+        const core::RequiredTypes& types,
+        const YAML::Node& configuration,
+        TypeRegistry& type_registry)
 {
-  int argc = 1;
-  char* argv[1];
-  char buffer[5] = "soss";
-  argv[0] = buffer;
+    int argc = 1;
+    char* argv[1];
+    char sh_name[8] = "is_ros1";
+    argv[0] = sh_name;
+    bool success = true;
 
-  const YAML::Node yaml_node_name = configuration["node_name"];
-  std::string node_name = yaml_node_name?
-        yaml_node_name.as<std::string>() : std::string("soss_ros1");
-  ros::init(argc, argv, std::move(node_name));
+    const YAML::Node yaml_node_name = configuration["node_name"];
+    const std::string node_name = yaml_node_name
+            ? yaml_node_name.as<std::string>()
+            : std::string("is_ros1_node_") + std::to_string(rand());
 
-  _node = std::make_unique<ros::NodeHandle>();
+    // Init ROS 1 context and create SystemHandle node.
+    ros::init(argc, argv, std::move(node_name));
 
-  bool success = true;
+    _node = std::make_unique<ros::NodeHandle>();
 
-  auto register_type = [&](const std::string& type_name) -> bool {
-    xtypes::DynamicType::Ptr type = Factory::instance().create_type(type_name);
-    if(type.get() == nullptr)
+    if (_node)
     {
-      std::cerr << "soss-ros1 failed to register the required DynamicType [" << type_name
-                << "]" << std::endl;
-      return false;
+        _logger << utils::Logger::Level::INFO
+                << "Created node '" << node_name << "'" << std::endl;
     }
-    type_registry.emplace(type_name, std::move(type));
-    return true;
-  };
-
-  soss::Search search("ros1");
-  for(const std::string& type : types.messages)
-  {
-    std::vector<std::string> checked_paths;
-    const std::string msg_mix_path =
-        search.find_message_mix(type, &checked_paths);
-
-    if(msg_mix_path.empty())
+    else
     {
-      print_missing_mix_file("message", type, checked_paths);
-      success = false;
-      continue;
+        _logger << utils::Logger::Level::ERROR
+                << "Failed to create node '" << node_name << "'" << std::endl;
+
+        return false;
     }
 
-    if(!Mix::from_file(msg_mix_path).load())
+    auto register_type = [&](const std::string& type_name) -> bool
+            {
+                xtypes::DynamicType::Ptr type = Factory::instance().create_type(type_name);
+                if (type.get() == nullptr)
+                {
+                    _logger << utils::Logger::Level::ERROR
+                            << "Failed to register the required DynamicType '"
+                            << type_name << "'" << std::endl;
+
+                    return false;
+                }
+                else
+                {
+                    _logger << utils::Logger::Level::DEBUG
+                            << "Registered the required DynamicType '"
+                            << type_name << "'" << std::endl;
+
+                    type_registry.emplace(type_name, std::move(type));
+                    return true;
+                }
+            };
+
+    // Add topic types to the TypeRegistry map, if present in the TypeFactory.
+    core::Search search("ros1");
+    for (const std::string& type : types.messages)
     {
-      std::cerr << "soss-ros1 failed to load extension for message type ["
-                << type << "] using mix file: " << msg_mix_path << std::endl;
-      success = false;
-      continue;
+        std::vector<std::string> checked_paths;
+        const std::string msg_mix_path =
+                search.find_message_mix(type, &checked_paths);
+
+        if (msg_mix_path.empty())
+        {
+            print_missing_mix_file("message", type, checked_paths);
+            success = false;
+            continue;
+        }
+
+        if (!core::Mix::from_file(msg_mix_path).load())
+        {
+            _logger << utils::Logger::Level::ERROR
+                    << "Failed to load extension for message type '"
+                    << type << "' using mix file: " << msg_mix_path << std::endl;
+
+            success = false;
+            continue;
+        }
+        else
+        {
+            _logger << utils::Logger::Level::DEBUG
+                    << "Loaded middleware interface extension for message type '"
+                    << type << "' using mix file: " << msg_mix_path << std::endl;
+
+            success &= register_type(type);
+        }
     }
 
-    success &= register_type(type);
-  }
-
-  for(const std::string& type : types.services)
-  {
-    std::string library_name = type.substr(0, type.find(":"));
-    std::vector<std::string> checked_paths;
-    const std::string srv_mix_path =
-        search.find_service_mix(library_name, &checked_paths);
-
-    if(srv_mix_path.empty())
+    // Add service types to the TypeRegistry map, if present in the TypeFactory.
+    for (const std::string& type : types.services)
     {
-      print_missing_mix_file("service", library_name, checked_paths);
-      success = false;
-      continue;
+        const std::string library_name = type.substr(0, type.find(":"));
+        std::vector<std::string> checked_paths;
+
+        const std::string srv_mix_path =
+                search.find_service_mix(library_name, &checked_paths);
+
+        if (srv_mix_path.empty())
+        {
+            print_missing_mix_file("service", library_name, checked_paths);
+            success = false;
+            continue;
+        }
+
+        if (!core::Mix::from_file(srv_mix_path).load())
+        {
+            _logger << utils::Logger::Level::ERROR
+                    << "Failed to load extension for service type '"
+                    << type << "' using mix file: " << srv_mix_path << std::endl;
+
+            success = false;
+            continue;
+        }
+        else
+        {
+            _logger << utils::Logger::Level::DEBUG
+                    << "Loaded middleware interface extension for service type '"
+                    << type << "' using mix file: " << srv_mix_path << std::endl;
+
+            success &= register_type(type);
+        }
     }
 
-    if(!Mix::from_file(srv_mix_path).load())
-    {
-      std::cerr << "soss-ros1 failed to load extension for service type ["
-                << type << "] using mix file: " << srv_mix_path << std::endl;
-      success = false;
-      continue;
-    }
-
-    success &= register_type(type);
-  }
-
-  return success;
+    return success;
 }
 
 //==============================================================================
 bool SystemHandle::okay() const
 {
-  if(_node)
-    return ros::ok();
+    if (_node)
+    {
+        return ros::ok();
+    }
 
-  return false;
+    return false;
 }
 
 //==============================================================================
 bool SystemHandle::spin_once()
 {
-  ros::spinOnce();
-  return ros::ok();
+    ros::spinOnce();
+    return ros::ok();
 }
 
 //==============================================================================
 SystemHandle::~SystemHandle()
 {
-  _subscriptions.clear();
-  _client_proxies.clear();
+    _subscriptions.clear();
+    _client_proxies.clear();
 
-  _node->shutdown();
-  _node.reset();
+    _node->shutdown();
+    _node.reset();
 
-  ros::shutdown();
+    ros::shutdown();
 }
 
 //==============================================================================
 bool SystemHandle::subscribe(
-    const std::string& topic_name,
-    const xtypes::DynamicType& message_type,
-    SubscriptionCallback callback,
-    const YAML::Node& configuration)
+        const std::string& topic_name,
+        const xtypes::DynamicType& message_type,
+        SubscriptionCallback* callback,
+        const YAML::Node& configuration)
 {
-  int queue_size = configuration["queue_size"].as<int>(default_queue_size);
-  // TODO(MXG): Parse configuration so users can change transport hints
-  auto subscription = Factory::instance().create_subscription(
+    int queue_size = configuration["queue_size"].as<int>(default_queue_size);
+    // TODO(MXG): Parse configuration so users can change transport hints
+    auto subscription = Factory::instance().create_subscription(
         message_type, *_node, topic_name,
         callback, queue_size, ros::TransportHints());
 
-  if(!subscription)
-    return false;
+    if (!subscription)
+    {
+        _logger << utils::Logger::Level::ERROR
+                << "Failed to create subscription for topic '" << topic_name
+                << "' with type '" << message_type.name() << "' on node '"
+                << ros::this_node::getName() << "'"
+                << ". The requested subscription has not been registered within the "
+                << "subscription factory!" << std::endl;
+        return false;
+    }
+    else
+    {
+        _subscriptions.emplace_back(std::move(subscription));
 
-  _subscriptions.emplace_back(std::move(subscription));
-  return true;
+        _logger << utils::Logger::Level::INFO
+                << "Created subscription for topic '" << topic_name << "' with type '"
+                << message_type.name() << "' on node '" << ros::this_node::getName()
+                << "'" << std::endl;
+
+        return true;
+    }
 }
 
 //==============================================================================
 std::shared_ptr<TopicPublisher> SystemHandle::advertise(
-    const std::string& topic_name,
-    const xtypes::DynamicType& message_type,
-    const YAML::Node& configuration)
+        const std::string& topic_name,
+        const xtypes::DynamicType& message_type,
+        const YAML::Node& configuration)
 {
-  int queue_size = configuration["queue_size"].as<int>(default_queue_size);
-  bool latch_behavior = configuration["latch"].as<bool>(default_latch_behavior);
+    std::shared_ptr<TopicPublisher> publisher;
 
-  if(topic_name.find('{') != std::string::npos)
-  {
-    // If the topic name contains a curly brace, we must assume that it needs
-    // runtime substitutions.
-    return make_meta_publisher(
-          message_type, *_node, topic_name,
-          queue_size, latch_behavior,
-          configuration);
-  }
+    int queue_size = configuration["queue_size"].as<int>(default_queue_size);
+    bool latch_behavior = configuration["latch"].as<bool>(default_latch_behavior);
 
-  return Factory::instance().create_publisher(
-        message_type, *_node, topic_name,
-        queue_size, latch_behavior);
+    if (topic_name.find('{') != std::string::npos)
+    {
+        // If the topic name contains a curly brace, we must assume that it needs
+        // runtime substitutions.
+        publisher = make_meta_publisher(
+            message_type, *_node, topic_name,
+            queue_size, latch_behavior,
+            configuration);
+    }
+    else
+    {
+        publisher = Factory::instance().create_publisher(
+            message_type, *_node, topic_name,
+            queue_size, latch_behavior);
+    }
+
+    if (nullptr != publisher)
+    {
+        _logger << utils::Logger::Level::INFO
+                << "Created publisher for topic '" << topic_name << "' with type '"
+                << message_type.name() << "' on node '" << ros::this_node::getName()
+                << "'" << std::endl;
+    }
+    else
+    {
+        _logger << utils::Logger::Level::ERROR
+                << "Failed to create publisher for topic '" << topic_name
+                << "' with type '" << message_type.name() << "' on node '"
+                << ros::this_node::getName()
+                << "'. The requested publisher has not been registered "
+                << "within the publisher factory!" << std::endl;
+    }
+
+    return publisher;
 }
 
 //==============================================================================
 bool SystemHandle::create_client_proxy(
-    const std::string& service_name,
-    const xtypes::DynamicType& service_type,
-    RequestCallback callback,
-    const YAML::Node& /*configuration*/)
+        const std::string& service_name,
+        const xtypes::DynamicType& service_type,
+        RequestCallback* callback,
+        const YAML::Node& /*configuration*/)
 {
-  auto client_proxy = Factory::instance().create_client_proxy(
+    auto client_proxy = Factory::instance().create_client_proxy(
         service_type.name(), *_node, service_name, callback);
 
-  if(!client_proxy)
-    return false;
+    if (!client_proxy)
+    {
+        _logger << utils::Logger::Level::ERROR
+                << "Failed to create service client for service '" << service_name
+                << "' with type '" << service_type.name() << "' on node '"
+                << ros::this_node::getName()
+                << "'. The requested service client has not been registered "
+                << "within the service client factory!" << std::endl;
 
-  _client_proxies.emplace_back(std::move(client_proxy));
-  return true;
+        return false;
+    }
+    else
+    {
+        _logger << utils::Logger::Level::INFO
+                << "Created service client for service '" << service_name
+                << "' with type '" << service_type.name() << "' on node '"
+                << ros::this_node::getName() << "'" << std::endl;
+
+        _client_proxies.emplace_back(std::move(client_proxy));
+        return true;
+    }
 }
 
 //==============================================================================
 std::shared_ptr<ServiceProvider> SystemHandle::create_service_proxy(
-    const std::string& service_name,
-    const xtypes::DynamicType& service_type,
-    const YAML::Node& /*configuration*/)
+        const std::string& service_name,
+        const xtypes::DynamicType& service_type,
+        const YAML::Node& /*configuration*/)
 {
-  return Factory::instance().create_server_proxy(
+    auto server_proxy = Factory::instance().create_server_proxy(
         service_type.name(), *_node, service_name);
+
+    if (!server_proxy)
+    {
+        _logger << utils::Logger::Level::ERROR
+                << "Failed to create service server for service '" << service_name
+                << "' with type '" << service_type.name() << "' on node '"
+                << ros::this_node::getName()
+                << "'. The requested service server has not been registered "
+                << "within the service server factory!" << std::endl;
+    }
+    else
+    {
+        _logger << utils::Logger::Level::INFO
+                << "Created service server for service '" << service_name
+                << "' with type '" << service_type.name() << "' on node '"
+                << ros::this_node::getName() << "'" << std::endl;
+    }
+
+    return server_proxy;
 }
 
-} // namespace ros1
-} // namespace soss
+} //  namespace ros1
+} //  namespace sh
+} //  namespace is
+} //  namespace eprosima
 
 //==============================================================================
-SOSS_REGISTER_SYSTEM("ros1", soss::ros1::SystemHandle)
+IS_REGISTER_SYSTEM("ros1", eprosima::is::sh::ros1::SystemHandle)
