@@ -31,7 +31,7 @@ jobs:
       - name: Build
         run: |
           . /opt/ros/noetic/setup.sh
-          colcon build --packages-up-to is-ros1-test --event-handlers console_direct+
+          colcon build --cmake-args -DBUILD_ROS1_TESTS=ON --event-handlers console_direct+
 
       - name: Test
         run: |

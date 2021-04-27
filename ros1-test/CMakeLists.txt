@@ -29,6 +29,7 @@ find_package(is-mock REQUIRED)
 find_package(is-ros1-genmsg REQUIRED)
 find_package(is-ros1 REQUIRED)
 find_package(xtypes REQUIRED)
+find_package(is-ros1-mix-generator REQUIRED)
 
 # Get message dependencies
 find_package(geometry_msgs REQUIRED)
@@ -75,11 +76,6 @@ macro(compile_test)
 
     add_gtest(${TEST_NAME} SOURCES ${TEST_SOURCE})
 endmacro()
-
-is_ros1_genmsg_mix(
-    PACKAGES geometry_msgs nav_msgs
-    MIDDLEWARES ros1
-)
 
 include(CTest)
 include(${IS_GTEST_CMAKE_MODULE_DIR}/gtest.cmake)
