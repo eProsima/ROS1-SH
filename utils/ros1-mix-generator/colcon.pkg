@@ -1,0 +1,5 @@
+{
+    "name": "is-ros1-mix-generator",
+    "type": "ros.cmake",
+    "dependencies": ["is-ros1-genmsg", "is-ros1"]
+}
