@@ -17,7 +17,7 @@ implementation for the *xTypes* protocol, that is, [eProsima xTypes](https://git
 
 ### The ROS 1 SystemHandle
 
-<a href="https://docs.ros.org/en/noetic/"><img src="docs/images/ros1_logo.png" align="left" hspace="8" vspace="2" width="120"></a>
+<a href="https://wiki.ros.org/noetic"><img src="docs/images/ros1_logo.png" align="left" hspace="8" vspace="2" width="120"></a>
 
 This repository contains the source code of *Integration Service* **System Handle**
 for the [ROS 1](https://wiki.ros.org/noetic) middleware protocol, widely used in the robotics field.
