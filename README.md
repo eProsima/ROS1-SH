@@ -2,22 +2,25 @@
 
 # ROS 1 System Handle
 
+[![ROS 1 SH CI Status](https://github.com/eProsima/ROS1-SH/actions/workflows/ci.yml/badge.svg)](https://github.com/eProsima/ROS1-SH/actions)
+
 ## Introduction
 
 ### What is a System Handle?
-[![ROS 1 SH CI Status](https://github.com/eProsima/ROS1-SH/actions/workflows/ci.yml/badge.svg)](https://github.com/eProsima/ROS1-SH/actions)
 
-A [System Handle](<!--TODO: add link-->) is a plugin that allows a certain middleware
+A [System Handle](https://integration-service.docs.eprosima.com/en/latest/sh.html) is a plugin that allows a certain middleware
 or communication protocol to speak the same language used by the [eProsima Integration Service](https://github.com/eProsima/Integration-Service),
 that is, *Extensible and Dynamic Topic Types for DDS* (**xTypes**);
 specifically, *Integration Service* bases its intercommunication abilities on eProsima's open source
 implementation for the *xTypes* protocol, that is, [eProsima xTypes](https://github.com/eProsima/xtypes).
 
-![System Handle Architecture](docs/images/system-handle-architecture.png)
+<p align="center">
+  <a href="https://integration-service.docs.eprosima.com/en/latest/sh.html"><img src="docs/images/system-handle-architecture.png"></a>
+</p>
 
 ### The ROS 1 SystemHandle
 
-<a href="https://wiki.ros.org/noetic"><img src="docs/images/ros1_logo.png" align="left" hspace="8" vspace="2" width="120"></a>
+<a href="https://wiki.ros.org/noetic"><img src="docs/images/ros1_logo.png" align="left" hspace="4" vspace="2" width="140"></a>
 
 This repository contains the source code of *Integration Service* **System Handle**
 for the [ROS 1](https://wiki.ros.org/noetic) middleware protocol, widely used in the robotics field.
@@ -36,9 +39,7 @@ intercommunication architecture.
 
 To get a more precise idea on how these YAML files have to be filled and which fields they require
 in order to succesfully configure and launch an *Integration Service* project, please refer to the
-dedicated [configuration](<!-- TODO: add link -->) section of the official documentation.
-An illustrative explanation is also presented in the *Readme* `Configuration` section of the
-[general project repository](https://github.com/eProsima/Integration-Service).
+[dedicated configuration section](https://integration-service.docs.eprosima.com/en/latest/yaml_config.html) of the official documentation.
 
 Regarding the *ROS 1 System Handle*, there are several specific parameters which can be configured
 for the ROS 1 middleware. All of these parameters are optional, and fall as suboptions of the main
@@ -86,19 +87,25 @@ five sections described in the *Configuration* chapter of *Integration Service* 
 There are several *Integration Service* examples using the *ROS 1 System Handle* available
 in the project's [main source code repository]([https://](https://github.com/eProsima/Integration-Service/tree/main/examples)).
 
-Some of these examples, where the *ROS 1 System Handle* plays a different role in each of them, are introduced here.
+One of these examples, where the *ROS 1 System Handle* takes part in the intercommunication process, is introduced here.
 
-### Publisher/subscriber intercommunication between ROS 1 and ROS 2
+<a href="https://integration-service.docs.eprosima.com/en/latest/ros1-ros2.html"><img align="left" width="15" height="38" src="https://via.placeholder.com/15/40c15d/000000?text=+" alt="Green icon"></a>
+
+### ROS 1 - ROS 2 bridge (publisher -> subscriber)
 
 In this example, *Integration Service* uses both this *ROS 1 System Handle* and the *ROS 2 System Handle*
 to transmit data coming from a ROS 1 publisher into the ROS 2 data space, so that it can be
 consumed by a ROS 2 subscriber on the same topic, and viceversa.
 
+<p align="center">
+  <a href="https://integration-service.docs.eprosima.com/en/latest/ros1-ros2.html"><img src="docs/images/ros1_ros2_pubsub_example.png" width="500"></a>
+</p>
+
 The configuration file used by *Integration Service* for this example can be found
 [here](https://github.com/eProsima/Integration-Service/blob/main/examples/basic/ros1_ros2__helloworld.yaml).
 
 For a detailed step by step guide on how to build and test this example, please refer to the
-[official documentation](<!-- TODO: link to example -->).
+[dedicated section](https://integration-service.docs.eprosima.com/en/latest/ros1-ros2.html) in the official documentation.
 
 <!-- TODO: add YAML and applications for DDS and ROS2 to test this
 ### ROS 1 service server addressing petitions coming from a ROS 2 service client
@@ -117,7 +124,7 @@ For a detailed step by step guide on how to build and test this example, please 
 -->
 ## Compilation flags
 
-Besides the [global compilation flags](<!-- TODO: link to IS readme section-->) available for the
+Besides the [global compilation flags](https://integration-service.docs.eprosima.com/en/latest/installation.html#global-compilation-flags) available for the
 whole *Integration Service* product suite, there are some specific flags which apply only to the
 *ROS 1 System Handle*; they are listed below:
 
