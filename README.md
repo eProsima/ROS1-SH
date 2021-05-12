@@ -91,7 +91,7 @@ One of these examples, where the *ROS 1 System Handle* takes part in the interco
 
 <a href="https://integration-service.docs.eprosima.com/en/latest/ros1-ros2.html"><img align="left" width="15" height="38" src="https://via.placeholder.com/15/40c15d/000000?text=+" alt="Green icon"></a>
 
-### ROS 1 - ROS 2 bridge  (publisher -> subscriber)
+### ROS 1 - ROS 2 bridge  (publisher - subscriber)
 
 In this example, *Integration Service* uses both this *ROS 1 System Handle* and the *ROS 2 System Handle*
 to transmit data coming from a ROS 1 publisher into the ROS 2 data space, so that it can be
