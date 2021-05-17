@@ -152,7 +152,7 @@ whole *Integration Service* product suite, there are some specific flags which a
   or `BUILD_ROS1_TESTS` is used, case in which some additional ROS 1 packages `mix` files
   required for testing will be built.
 
-  If an user wants to compile some additional packages to use them with *Integration Service*,
+  If the user wants to compile some additional packages to use them with *Integration Service*,
   the following command must be launched to compile it, adding as much packages to the list as desired:
   ```bash
   ~/is_ws$ colcon build --cmake-args -DMIX_ROS_PACKAGES="std_msgs geometry_msgs sensor_msgs nav_msgs"
