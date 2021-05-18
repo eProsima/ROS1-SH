@@ -34,7 +34,7 @@ namespace ros1 {
 
 /**
  * @class SystemHandle
- *        Implements all the interface defined for the *Integration Service* FullSystem,
+ * @brief Implements all the interface defined for the *Integration Service* FullSystem,
  *        for the ROS 1 ecosystem.
  *
  * @note This SystemHandle is currently prepared to support the latest LTS distribution
