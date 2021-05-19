@@ -23,6 +23,15 @@ cmake_minimum_required(VERSION 3.5.0)
 
 project(is-ros1-test)
 
+###################################################################################
+# Configure options
+###################################################################################
+option(BUILD_LIBRARY "Compile the ROS 1 SystemHandle" ON)
+
+if(NOT BUILD_LIBRARY)
+    return()
+endif()
+
 # Get Integration Service dependencies
 find_package(is-core REQUIRED)
 find_package(is-mock REQUIRED)
