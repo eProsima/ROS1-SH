@@ -38,7 +38,7 @@ namespace ros1 {
  *        for the ROS 1 ecosystem.
  *
  * @note This SystemHandle is currently prepared to support the latest LTS distribution
- *       of ROS 1, that is, Noetic Ninjemys.
+ *       of ROS 1, that is, <a href="http://wiki.ros.org/noetic">Noetic Ninjemys</a>.
  */
 class SystemHandle : public virtual FullSystem
 {
