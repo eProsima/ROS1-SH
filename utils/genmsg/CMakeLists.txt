@@ -19,6 +19,15 @@ cmake_minimum_required(VERSION 3.5.0 FATAL_ERROR)
 
 project(is-ros1-genmsg)
 
+###################################################################################
+# Configure options
+###################################################################################
+option(BUILD_LIBRARY "Compile the ROS 1 SystemHandle" ON)
+
+if(NOT BUILD_LIBRARY)
+    return()
+endif()
+
 find_package(is-core REQUIRED)
 find_package(catkin QUIET COMPONENTS genmsg)
 
