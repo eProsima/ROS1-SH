@@ -31,7 +31,7 @@ namespace ros1 {
 //==============================================================================
 /**
  * @brief Produces a is::TopicPublisher that allows to use runtime substitution parameters
- * in the YAML configuration file.
+ * in the *YAML* configuration file.
  *
  * @see is::core::StringTemplate
  *
@@ -47,7 +47,7 @@ namespace ros1 {
  *            the last message published is saved and sent to any future subscribers that connect.
  *
  * @param[in] configuration The configuration specific for this SystemHandle,
- *            as described in the user-provided `YAML` input file.
+ *            as described in the user-provided *YAML* input file.
  *
  * @returns A pointer to the created *Integration Service* TopicPublisher entity.
  */

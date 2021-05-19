@@ -150,7 +150,6 @@ if(BUILD_API_REFERENCE)
     file(GLOB_RECURSE HPP_FILES
         "${IS_ROS1_INCLUDE_DIR}/*.h*"
         "${IS_ROS1_SOURCE_DIR}/*.h*")
-    message(WARNING "HPP FILES ${HPP_FILES}")
 
     # Doxygen related variables
     set(DOXYGEN_INPUT_DIR "${IS_ROS1_INCLUDE_DIR} ${IS_ROS1_SOURCE_DIR}")
