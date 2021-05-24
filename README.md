@@ -29,6 +29,12 @@ The main purpose of the *ROS 1 System Handle* is that of establishing a connecti
 application and an application running over a different middleware implementation.
 This is the classic use-case approach for *Integration Service*.
 
+## Dependencies
+
+This section provides a list of the dependencies needed in order to compile *ROS 1 System Handle*.
+
+* [ROS 1](http://wiki.ros.org/ROS/Installation): *Melodic/Noetic ROS 1* distribution.
+
 ## Configuration
 
 *Integration Service* is configured by means of a YAML configuration file, which specifies
