@@ -3,7 +3,7 @@
 # ROS 1 System Handle
 
 [![ROS 1 SH CI Status](https://github.com/eProsima/ROS1-SH/actions/workflows/ci.yml/badge.svg)](https://github.com/eProsima/ROS1-SH/actions)
-&nbsp;&nbsp;[![Have an issue?](https://img.shields.io/badge/-Open%20an%20issue-orange)](https://github.com/eProsima/Integration-Service/issues)
+&nbsp;&nbsp;[![Have an issue?](https://img.shields.io/badge/-Open%20an%20issue-orange)](https://github.com/eProsima/Integration-Service/issues/new)
 
 ## Introduction
 
