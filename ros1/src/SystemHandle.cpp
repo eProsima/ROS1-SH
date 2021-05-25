@@ -203,7 +203,10 @@ bool SystemHandle::okay() const
 //==============================================================================
 bool SystemHandle::spin_once()
 {
+    ros::Rate rate(10);
     ros::spinOnce();
+    rate.sleep();
+
     return ros::ok();
 }
 
