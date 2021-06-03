@@ -79,7 +79,7 @@ private:
 
         xtypes::DynamicData data(_message_type);
         convert_to_xtype(*(msg_event.getMessage()), data);
-        (*_callback)(data);
+        (*_callback)(data, nullptr);
     }
 
     const std::string _topic;
