@@ -259,6 +259,15 @@ bool SystemHandle::subscribe(
 }
 
 //==============================================================================
+bool SystemHandle::is_internal_message(
+        void* /*filter_handle*/)
+{
+    // Always return false, since this should be handled by the ROS 1 SubscriptionCallback
+    // signature with the MessageEvent metadata about the received message instance.
+    return false;
+}
+
+//==============================================================================
 std::shared_ptr<TopicPublisher> SystemHandle::advertise(
         const std::string& topic_name,
         const xtypes::DynamicType& message_type,

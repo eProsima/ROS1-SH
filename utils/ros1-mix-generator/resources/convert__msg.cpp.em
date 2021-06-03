@@ -69,10 +69,16 @@ public:
 private:
 
     void subscription_callback(
-            const Ros1_MsgPtr& msg)
+            const ros::MessageEvent<Ros1_MsgPtr const>& msg_event)
     {
+        if (ros::this_node::getName() == msg_event.getPublisherName())
+        {
+            // This is a local publication from within Integration Service. Return
+            return;
+        }
+
         xtypes::DynamicData data(_message_type);
-        convert_to_xtype(*msg, data);
+        convert_to_xtype(*(msg_event.getMessage()), data);
         (*_callback)(data);
     }
 
