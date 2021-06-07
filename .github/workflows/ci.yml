@@ -44,5 +44,5 @@ jobs:
       - name: Test
         run: |
           . /opt/ros/noetic/setup.sh && . install/local_setup.sh
-          roscore & colcon test --packages-up-to is-ros1-test --event-handlers console_direct+
+          roscore & colcon test --packages-select is-ros1 --event-handlers console_direct+
           colcon test-result
