@@ -73,9 +73,9 @@ function(is_ros1_genmsg_mix)
         INTERPRETER
             "python$ENV{ROS_PYTHON_VERSION}"
         FIND
-            ${IS_ROS1_GENMSG_FIND_PACKAGE_INFO_SCRIPT}
+            ${CMAKE_CURRENT_LIST_DIR}/scripts/is_ros1_genmsg_find_package_info.py
         GENERATE
-            ${IS_ROS1_GENMSG_GENERATE_SCRIPT}
+            ${CMAKE_CURRENT_LIST_DIR}/scripts/is_ros1_genmsg_generate.py
         PACKAGES
             ${_ARG_PACKAGES}
         MIDDLEWARES

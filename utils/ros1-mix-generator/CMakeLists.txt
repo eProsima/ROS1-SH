@@ -32,7 +32,8 @@ if(NOT BUILD_LIBRARY)
 endif()
 
 # Get dependencies
-find_package(is-ros1-genmsg REQUIRED)
+find_package(is-core REQUIRED)
+find_package(catkin REQUIRED COMPONENTS genmsg)
 find_package(is-ros1 REQUIRED)
 
 list(APPEND MIX_ROS_PACKAGES_LIST std_msgs)
@@ -69,6 +70,25 @@ if (BUILD_TESTS OR BUILD_ROS1_TESTS)
     list(APPEND MIX_ROS_PACKAGES_LIST geometry_msgs nav_msgs)
 
 endif()
+
+###################################################################################
+# Install the Integration Service is-ros1-genmsg-mix plugin
+###################################################################################
+if(BUILD_LIBRARY)
+    is_mix_install_extension(
+        IDL_TYPE
+            genmsg
+        MIDDLEWARE
+            ros1
+        MESSAGE
+            SOURCES "${CMAKE_CURRENT_LIST_DIR}/resources/convert__msg.cpp.em"
+            HEADERS "${CMAKE_CURRENT_LIST_DIR}/resources/convert__msg.hpp.em"
+        SERVICE
+            SOURCES "${CMAKE_CURRENT_LIST_DIR}/resources/convert__srv.cpp.em"
+    )
+endif()
+
+include(cmake/is_ros1_genmsg_mix.cmake)
 
 is_ros1_genmsg_mix(
     PACKAGES ${MIX_ROS_PACKAGES_LIST}

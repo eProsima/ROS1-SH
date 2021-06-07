@@ -21,24 +21,8 @@
 
 cmake_minimum_required(VERSION 3.5.0)
 
-project(is-ros1-test)
-
-###################################################################################
-# Configure options
-###################################################################################
-option(BUILD_LIBRARY "Compile the ROS 1 SystemHandle" ON)
-
-if(NOT BUILD_LIBRARY)
-    return()
-endif()
-
 # Get Integration Service dependencies
-find_package(is-core REQUIRED)
 find_package(is-mock REQUIRED)
-find_package(is-ros1-genmsg REQUIRED)
-find_package(is-ros1 REQUIRED)
-find_package(xtypes REQUIRED)
-find_package(is-ros1-mix-generator REQUIRED)
 
 # Get message dependencies
 find_package(geometry_msgs REQUIRED)
@@ -59,7 +43,7 @@ macro(compile_test)
     target_link_libraries(${TEST_NAME}
         PUBLIC
             is::mock
-            is::ros1
+            ${catkin_LIBRARIES}
             ${geometry_msgs_LIBRARIES}
             ${nav_msgs_LIBRARIES}
         PRIVATE
