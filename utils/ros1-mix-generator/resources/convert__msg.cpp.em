@@ -32,6 +32,7 @@ conversion_dependency = 'is/genmsg/ros1/{}/msg/convert__msg__{}.hpp'.format(
 
 // Include the NodeHandle API so we can subscribe and advertise
 #include <ros/node_handle.h>
+#include <ros/this_node.h>
 
 // TODO(jamoralp): Add utils::Logger traces here
 namespace eprosima {
@@ -69,7 +70,7 @@ public:
 private:
 
     void subscription_callback(
-            const ros::MessageEvent<Ros1_MsgPtr const>& msg_event)
+            const ros::MessageEvent<Ros1_Msg const>& msg_event)
     {
         if (ros::this_node::getName() == msg_event.getPublisherName())
         {
@@ -78,7 +79,7 @@ private:
         }
 
         xtypes::DynamicData data(_message_type);
-        convert_to_xtype(*(msg_event.getMessage()), data);
+        convert_to_xtype(*(msg_event.getMessage().get()), data);
         (*_callback)(data, nullptr);
     }
 
