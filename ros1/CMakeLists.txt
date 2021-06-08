@@ -45,7 +45,6 @@ endif()
 ###################################################################################
 if(BUILD_LIBRARY)
     find_package(is-core REQUIRED)
-    # find_package(is-ros1-genmsg REQUIRED)
     find_package(catkin REQUIRED COMPONENTS roscpp)
 endif()
 
@@ -131,7 +130,7 @@ if(BUILD_LIBRARY)
 endif()
 
 ###################################################################################
-# Integration Service ROS 2 SystemHandle tests
+# Integration Service ROS 1 SystemHandle tests
 ###################################################################################
 if(BUILD_LIBRARY)
     if(BUILD_TESTS OR BUILD_ROS1_TESTS)
