@@ -44,9 +44,7 @@ endif()
 # External dependencies for the Integration Service ROS 1 SystemHandle library
 ###################################################################################
 if(BUILD_LIBRARY)
-    find_package(xtypes REQUIRED)
     find_package(is-core REQUIRED)
-    find_package(is-ros1-genmsg REQUIRED)
     find_package(catkin REQUIRED COMPONENTS roscpp)
 endif()
 
@@ -132,18 +130,12 @@ if(BUILD_LIBRARY)
 endif()
 
 ###################################################################################
-# Install the Integration Service is-ros1-genmsg-mix plugin
+# Integration Service ROS 1 SystemHandle tests
 ###################################################################################
 if(BUILD_LIBRARY)
-    is_ros1_genmsg_install_extension(
-        MIDDLEWARE
-            ros1
-        MESSAGE
-            SOURCES "${CMAKE_CURRENT_LIST_DIR}/resources/convert__msg.cpp.em"
-            HEADERS "${CMAKE_CURRENT_LIST_DIR}/resources/convert__msg.hpp.em"
-        SERVICE
-            SOURCES "${CMAKE_CURRENT_LIST_DIR}/resources/convert__srv.cpp.em"
-    )
+    if(BUILD_TESTS OR BUILD_ROS1_TESTS)
+        add_subdirectory(test)
+    endif()
 endif()
 
 ###################################################################################
