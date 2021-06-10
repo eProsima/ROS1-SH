@@ -58,7 +58,8 @@ public:
             TopicSubscriberSystem::SubscriptionCallback* callback,
             uint32_t queue_size,
             const ros::TransportHints& transport_hints)
-        : _callback(callback)
+        : _topic(topic_name)
+        , _callback(callback)
         , _message_type(message_type)
     {
 
