@@ -229,16 +229,22 @@ TEST_F(ROS1_pub, Publish_subscribe_between_ros1_and_mock)
 
         geometry_msgs::Pose ros1_pose = generate_random_pose().pose;
         logger << is::utils::Logger::Level::INFO
-               << "[Process 1] Generated random pose message: {position: "
-               << " {x: " << ros1_pose.position.x
-               << ", y: " << ros1_pose.position.y
-               << ", z: " << ros1_pose.position.z
-               << "}, orientation: "
-               << " {x: " << ros1_pose.orientation.x
-               << ", y: " << ros1_pose.orientation.y
-               << ", z: " << ros1_pose.orientation.z
-               << ", w: " << ros1_pose.orientation.w
-               << "}}" << std::endl;
+               << "[Process 1] Generated random pose message:\n"
+               << "    {\n"
+               << "        position:\n"
+               << "        {\n"
+               << "            x: " << ros1_pose.position.x << ",\n"
+               << "            y: " << ros1_pose.position.y << ",\n"
+               << "            z: " << ros1_pose.position.z << "\n"
+               << "        },\n"
+               << "        orientation:\n"
+               << "        {\n"
+               << "            x: " << ros1_pose.orientation.x << ",\n"
+               << "            y: " << ros1_pose.orientation.y << ",\n"
+               << "            z: " << ros1_pose.orientation.z << ",\n"
+               << "            w: " << ros1_pose.orientation.w << "\n"
+               << "        }\n"
+               << "    }" << std::endl;
 
         auto start_time = std::chrono::steady_clock::now();
         while (std::chrono::steady_clock::now() - start_time < 10s)
@@ -257,16 +263,22 @@ TEST_F(ROS1_pub, Publish_subscribe_between_ros1_and_mock)
         ASSERT_EQ(pose_future.wait_for(0s), std::future_status::ready);
         geometry_msgs::Pose received_pose = pose_future.get();
         logger << is::utils::Logger::Level::INFO
-               << "[Process 1] Received ROS 1 pose on topic 'echo_pose': {position: "
-               << " {x: " << received_pose.position.x
-               << ", y: " << received_pose.position.y
-               << ", z: " << received_pose.position.z
-               << "}, orientation: "
-               << " {x: " << received_pose.orientation.x
-               << ", y: " << received_pose.orientation.y
-               << ", z: " << received_pose.orientation.z
-               << ", w: " << received_pose.orientation.w
-               << "}}" << std::endl;
+               << "[Process 1] Received ROS 1 pose on topic 'echo_pose':\n"
+               << "    {\n"
+               << "        position:\n"
+               << "        {\n"
+               << "            x: " << ros1_pose.position.x << ",\n"
+               << "            y: " << ros1_pose.position.y << ",\n"
+               << "            z: " << ros1_pose.position.z << "\n"
+               << "        },\n"
+               << "        orientation:\n"
+               << "        {\n"
+               << "            x: " << ros1_pose.orientation.x << ",\n"
+               << "            y: " << ros1_pose.orientation.y << ",\n"
+               << "            z: " << ros1_pose.orientation.z << ",\n"
+               << "            w: " << ros1_pose.orientation.w << "\n"
+               << "        }\n"
+               << "    }" << std::endl;
 
         compare_poses(ros1_pose, received_pose);
 
