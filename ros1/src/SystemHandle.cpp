@@ -75,22 +75,22 @@ bool SystemHandle::configure(
     const YAML::Node yaml_node_name = configuration["node_name"];
     const std::string node_name = yaml_node_name
             ? yaml_node_name.as<std::string>()
-            : std::string("is_ros1_node_") + std::to_string(rand());
+            : std::string("is_ros1_node_");
 
     // Init ROS 1 context and create SystemHandle node.
-    ros::init(argc, argv, std::move(node_name));
+    ros::init(argc, argv, std::move(node_name), ros::init_options::AnonymousName);
 
     _node = std::make_unique<ros::NodeHandle>();
 
     if (_node)
     {
         _logger << utils::Logger::Level::INFO
-                << "Created node '" << node_name << "'" << std::endl;
+                << "Created node '" << ros::this_node::getName() << "'" << std::endl;
     }
     else
     {
         _logger << utils::Logger::Level::ERROR
-                << "Failed to create node '" << node_name << "'" << std::endl;
+                << "Failed to create node '" << ros::this_node::getName() << "'" << std::endl;
 
         return false;
     }
@@ -256,6 +256,15 @@ bool SystemHandle::subscribe(
 
         return true;
     }
+}
+
+//==============================================================================
+bool SystemHandle::is_internal_message(
+        void* /*filter_handle*/)
+{
+    // Always return false, since this should be handled by the ROS 1 SubscriptionCallback
+    // signature with the MessageEvent metadata about the received message instance.
+    return false;
 }
 
 //==============================================================================

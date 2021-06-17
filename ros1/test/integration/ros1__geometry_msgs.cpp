@@ -28,11 +28,16 @@
 
 #include <gtest/gtest.h>
 
+#include <semaphore.h>
+#include <fcntl.h>
+
 #include <random>
 #include <limits>
 
 namespace is = eprosima::is;
 namespace xtypes = eprosima::xtypes;
+
+static is::utils::Logger logger("is::sh::ROS1::test::geometry_msgs");
 
 geometry_msgs::PoseStamped generate_random_pose()
 {
@@ -114,147 +119,250 @@ void compare_poses(
     COMPARE_POSES_TEST_ORIENTATION_COMPONENT(z);
 }
 
-TEST(ROS1, Publish_subscribe_between_ros1_and_mock)
+class ROS1_pub : public ::testing::Test
+{
+public:
+
+    void SetUp()
+    {
+        sync_sem = sem_open(sync_sem_name, O_CREAT, 0644, 0);
+        ASSERT_NE(nullptr, sync_sem);
+        logger << is::utils::Logger::Level::DEBUG
+               << "Created sync system semaphore '" << sync_sem_name << "'" << std::endl;
+
+        shutdown_sem = sem_open(shutdown_sem_name, O_CREAT, 0644, 0);
+        ASSERT_NE(nullptr, shutdown_sem);
+        logger << is::utils::Logger::Level::DEBUG
+               << "Created shutdown system semaphore '" << shutdown_sem_name << "'" << std::endl;
+    }
+
+    void TearDown()
+    {
+        ASSERT_EQ(0, sem_close(sync_sem));
+        sem_unlink(sync_sem_name);
+        logger << is::utils::Logger::Level::DEBUG
+               << "Closed sync system semaphore '" << sync_sem_name << "'" << std::endl;
+
+        ASSERT_EQ(0, sem_close(shutdown_sem));
+        sem_unlink(shutdown_sem_name);
+        logger << is::utils::Logger::Level::DEBUG
+               << "Closed sync system semaphore '" << shutdown_sem_name << "'" << std::endl;
+
+        // kill(pid, SIGKILL);
+    }
+
+protected:
+
+    pid_t pid;
+
+    static constexpr const char* const sync_sem_name = "/is_ros1_sem";
+    static constexpr const char* const shutdown_sem_name = "/is_ros1_sem_shutdown";
+
+    sem_t* sync_sem;
+    sem_t* shutdown_sem;
+
+};
+
+TEST_F(ROS1_pub, Publish_subscribe_between_ros1_and_mock)
 {
     using namespace std::chrono_literals;
 
-    const double tolerance = 1e-8;
+    pid = fork();
 
-    YAML::Node config_node = YAML::LoadFile(ROS1__GEOMETRY_MSGS__TEST_CONFIG);
-
-    // We add the build directory that any unfound mix packages may have been
-    // built in, so that they can be found by the application.
-    is::core::InstanceHandle handle = is::run_instance(
-        config_node, {ROS1__GENMSG__BUILD_DIR});
-    ASSERT_TRUE(handle);
-
-    ros::NodeHandle ros1;
-    ASSERT_TRUE(ros::ok());
-
-    auto publisher = ros1.advertise<geometry_msgs::Pose>("transmit_pose", 10);
-    ASSERT_TRUE(publisher);
-
-    std::promise<xtypes::DynamicData> msg_promise;
-    std::future<xtypes::DynamicData> msg_future = msg_promise.get_future();
-    std::mutex mock_sub_mutex;
-    bool mock_sub_value_received = false;
-    auto mock_sub = [&](const xtypes::DynamicData& msg)
-            {
-                std::unique_lock<std::mutex> lock(mock_sub_mutex);
-                if (mock_sub_value_received)
-                {
-                    return;
-                }
-
-                mock_sub_value_received = true;
-                msg_promise.set_value(msg);
-            };
-    ASSERT_TRUE(is::sh::mock::subscribe("transmit_pose", mock_sub));
-
-    geometry_msgs::Pose ros1_pose = generate_random_pose().pose;
-
-    publisher.publish(ros1_pose);
-
-    ros::spinOnce();
-
-    auto start_time = std::chrono::steady_clock::now();
-    while (std::chrono::steady_clock::now() - start_time < 30s)
+    if (0 > pid)
     {
-        ros::spinOnce();
+        logger << is::utils::Logger::Level::ERROR
+               << "Failed to create child process to launch Integration Service" << std::endl;
+        return;
+    }
+    else if (0 < pid) // Parent process
+    {
+        logger << is::utils::Logger::Level::INFO
+               << "[Process 1] Detached. Creating ROS 1 entities..." << std::endl;
 
-        if (msg_future.wait_for(100ms) == std::future_status::ready)
+        int argc = 1;
+        char* argv[1];
+        char test_name[13] = "is_ros2_test";
+        argv[0] = test_name;
+
+        ros::init(argc, argv, "ros1_sh_test_geometry_msgs", ros::init_options::AnonymousName);
+        ros::NodeHandle ros1;
+        ASSERT_TRUE(ros::ok());
+
+        auto publisher = ros1.advertise<geometry_msgs::Pose>("transmit_pose", 10);
+        ASSERT_TRUE(publisher);
+        logger << is::utils::Logger::Level::INFO
+               << "[Process 1] Created a publisher for topic 'transmit_pose'" << std::endl;
+
+        struct timespec ts;
+        EXPECT_EQ(0, clock_gettime(CLOCK_REALTIME, &ts));
+        ts.tv_sec += 5;
+        EXPECT_EQ(0, sem_timedwait(sync_sem, &ts));
+        // sem_wait(sync_sem);
+
+        std::promise<geometry_msgs::Pose> pose_promise;
+        auto pose_future = pose_promise.get_future();
+        bool promise_sent = false;
+        std::mutex echo_mutex;
+
+        boost::function<void(const geometry_msgs::Pose&)> echo_sub =
+                [&](const geometry_msgs::Pose& msg)
+                {
+                    std::unique_lock<std::mutex> lock(echo_mutex);
+
+                    // promises will throw an exception if set_value(~) is called more than
+                    // once, so we'll guard against that.
+                    if (promise_sent)
+                    {
+                        return;
+                    }
+
+                    promise_sent = true;
+                    pose_promise.set_value(msg);
+                };
+
+        auto subscriber = ros1.subscribe<geometry_msgs::Pose>(
+            "echo_pose", 10, echo_sub);
+        ASSERT_TRUE(subscriber);
+        logger << is::utils::Logger::Level::INFO
+               << "[Process 1] Created a subscriber for topic 'echo_pose'" << std::endl;
+
+        geometry_msgs::Pose ros1_pose = generate_random_pose().pose;
+        logger << is::utils::Logger::Level::INFO
+               << "[Process 1] Generated random pose message:\n"
+               << "    {\n"
+               << "        position:\n"
+               << "        {\n"
+               << "            x: " << ros1_pose.position.x << ",\n"
+               << "            y: " << ros1_pose.position.y << ",\n"
+               << "            z: " << ros1_pose.position.z << "\n"
+               << "        },\n"
+               << "        orientation:\n"
+               << "        {\n"
+               << "            x: " << ros1_pose.orientation.x << ",\n"
+               << "            y: " << ros1_pose.orientation.y << ",\n"
+               << "            z: " << ros1_pose.orientation.z << ",\n"
+               << "            w: " << ros1_pose.orientation.w << "\n"
+               << "        }\n"
+               << "    }" << std::endl;
+
+        auto start_time = std::chrono::steady_clock::now();
+        while (std::chrono::steady_clock::now() - start_time < 10s)
         {
-            break;
+            logger << is::utils::Logger::Level::INFO
+                   << "[Process 1] Publishing ROS 1 pose on topic 'transmit_pose'... " << std::endl;
+            publisher.publish(ros1_pose);
+            ros::spinOnce();
+
+            if (pose_future.wait_for(1s) == std::future_status::ready)
+            {
+                break;
+            }
         }
 
-        publisher.publish(ros1_pose);
-    }
+        ASSERT_EQ(pose_future.wait_for(0s), std::future_status::ready);
+        geometry_msgs::Pose received_pose = pose_future.get();
+        logger << is::utils::Logger::Level::INFO
+               << "[Process 1] Received ROS 1 pose on topic 'echo_pose':\n"
+               << "    {\n"
+               << "        position:\n"
+               << "        {\n"
+               << "            x: " << ros1_pose.position.x << ",\n"
+               << "            y: " << ros1_pose.position.y << ",\n"
+               << "            z: " << ros1_pose.position.z << "\n"
+               << "        },\n"
+               << "        orientation:\n"
+               << "        {\n"
+               << "            x: " << ros1_pose.orientation.x << ",\n"
+               << "            y: " << ros1_pose.orientation.y << ",\n"
+               << "            z: " << ros1_pose.orientation.z << ",\n"
+               << "            w: " << ros1_pose.orientation.w << "\n"
+               << "        }\n"
+               << "    }" << std::endl;
 
-    // Wait no longer than a few seconds for the message to arrive. If it's not
-    // ready by that time, then something is probably broken with the test, and
-    // we should quit instead of waiting for the future and potentially hanging
-    // forever.
-    ASSERT_EQ(msg_future.wait_for(0s), std::future_status::ready);
-    xtypes::DynamicData received_msg = msg_future.get();
+        compare_poses(ros1_pose, received_pose);
 
-    EXPECT_EQ(received_msg.type().name(), "geometry_msgs/Pose");
 
-    xtypes::ReadableDynamicDataRef position = received_msg["position"];
-    xtypes::ReadableDynamicDataRef orientation = received_msg["orientation"];
+        // Shutdown ROS 1
+        ros1.shutdown();
 
-    #define TEST_POSITION_OF( u ) \
-    { \
-        const double u = position[#u]; \
-        ASSERT_NEAR(u, ros1_pose.position.u, tolerance); \
-    }
+        logger << is::utils::Logger::Level::DEBUG
+               << "[Process 1] ROS 1 shutdown finished."
+               << " Notify Integration Service to stop it..." << std::endl;
 
-    TEST_POSITION_OF(x);
-    TEST_POSITION_OF(y);
-    TEST_POSITION_OF(z);
+        sem_post(shutdown_sem);
 
-    bool promise_sent = false;
-    std::promise<geometry_msgs::Pose> pose_promise;
-    auto pose_future = pose_promise.get_future();
-    std::mutex echo_mutex;
-
-    boost::function<void(const geometry_msgs::Pose&)> echo_sub =
-            [&](const geometry_msgs::Pose& msg)
-            {
-                std::unique_lock<std::mutex> lock(echo_mutex);
-
-                // promises will throw an exception if set_value(~) is called more than
-                // once, so we'll guard against that.
-                if (promise_sent)
+        auto check_child_status =
+                [&]() -> int
                 {
-                    return;
-                }
+                    int status;
+                    waitpid(pid, &status, WUNTRACED);
 
-                promise_sent = true;
-                pose_promise.set_value(msg);
-            };
+                    if (WIFEXITED(status))
+                    {
+                        std::cout << "Child exited normally" << std::endl;
+                        return WEXITSTATUS(status);
+                    }
+                    else
+                    {
+                        std::cout << "Child exited abnormally" << std::endl;
+                        return -EXIT_FAILURE;
+                    }
+                };
 
-    auto subscriber = ros1.subscribe<geometry_msgs::Pose>(
-        "echo_pose", 10, echo_sub);
-    ASSERT_TRUE(subscriber);
-
-    // Keep spinning and publishing while we wait for the promise to be
-    // delivered. Try to cycle this for no more than a few seconds. If it's not
-    // finished by that time, then something is probably broken with the test or
-    // with Integration Service, and we should quit instead of waiting for the future and
-    // potentially hanging forever.
-    start_time = std::chrono::steady_clock::now();
-    while (std::chrono::steady_clock::now() - start_time < 30s)
-    {
-        ros::spinOnce();
-
-        is::sh::mock::publish_message("echo_pose", received_msg);
-
-        ros::spinOnce();
-        if (pose_future.wait_for(100ms) == std::future_status::ready)
-        {
-            break;
-        }
+        // sem_wait(sync_sem);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        ASSERT_EQ(0, check_child_status());
     }
+    else // pid == 0
+    {
+        std::unique_ptr<is::core::InstanceHandle> handle(nullptr);
+        YAML::Node config_node = YAML::LoadFile(ROS1__GEOMETRY_MSGS__TEST_CONFIG);
 
-    ASSERT_EQ(pose_future.wait_for(0s), std::future_status::ready);
-    geometry_msgs::Pose received_pose = pose_future.get();
+        // We add the build directory that any unfound mix packages may have been
+        // built in, so that they can be found by the application.
+        handle = std::make_unique<is::core::InstanceHandle>(is::run_instance(
+                            config_node, {ROS1__GENMSG__BUILD_DIR}));
+        ASSERT_TRUE(handle);
+        logger << is::utils::Logger::Level::DEBUG
+               << "[Process 2] Integration Service was successfully launched" << std::endl;
 
-    compare_poses(ros1_pose, received_pose);
 
-    // Shutdown ROS 1
-    ros1.shutdown();
+        auto mock_sub = [&](const xtypes::DynamicData& msg)
+                {
+                    logger << is::utils::Logger::Level::INFO
+                           << "[Process 2]: Received message from ROS 1: [[ "
+                           << msg << " ]] on topic 'transmit_pose'. Sending it back "
+                           << "using mock middleware and topic 'echo_pose'..." << std::endl;
+                    is::sh::mock::publish_message("echo_pose", msg);
+                };
 
-    // Quit and wait for no more than a minute. We don't want the test to get
-    // hung here indefinitely in the case of an error.
-    handle.quit().wait_for(5s);
+        ASSERT_TRUE(is::sh::mock::subscribe("transmit_pose", mock_sub));
+        sem_post(sync_sem);
+        logger << is::utils::Logger::Level::INFO
+               << "[Process 2]: Created subscription for mock on topic 'transmit_pose'" << std::endl;
 
-    // Require that it's no longer running. If it is still running, then it is
-    // probably stuck, and we should forcefully quit.
-    ASSERT_TRUE(!handle.running());
-    ASSERT_TRUE(handle.wait() == 0);
+        struct timespec ts;
+        EXPECT_EQ(0, clock_gettime(CLOCK_REALTIME, &ts));
+        ts.tv_sec += 5;
+        EXPECT_EQ(0, sem_timedwait(shutdown_sem, &ts));
+        // sem_wait(shutdown_sem);
+        logger << is::utils::Logger::Level::DEBUG
+               << "Closing Integration Service..." << std::endl;
+
+        // Quit and wait for no more than 5 seconds. We don't want the test to get
+        // hung here indefinitely in the case of an error.
+        handle->quit().wait_for(5s);
+
+        // Require that it's no longer running. If it is still running, then it is
+        // probably stuck, and we should forcefully quit.
+        ASSERT_TRUE(!handle->running());
+        ASSERT_TRUE(handle->wait() == 0);
+        exit(testing::Test::HasFailure());
+    }
 }
 
-TEST(ROS1, Request_reply_between_ros1_and_mock)
+TEST(ROS1_srv, Request_reply_between_ros1_and_mock)
 {
     using namespace std::chrono_literals;
 
