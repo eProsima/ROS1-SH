@@ -20,7 +20,7 @@
 ##################################################################################
 cmake_minimum_required(VERSION 3.5.0 FATAL_ERROR)
 
-project(is-ros1 VERSION "3.0.0" LANGUAGES CXX)
+project(is-ros1 VERSION "3.1.0" LANGUAGES CXX)
 
 ###################################################################################
 # Configure options
