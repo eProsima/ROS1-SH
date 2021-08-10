@@ -67,6 +67,9 @@ for component, msg in {"request": spec.request, "response": spec.response}.items
 // Include the header for the conversions
 #include <is/utils/Convert.hpp>
 
+// Include the header for the logger
+#include <is/utils/Log.hpp>
+
 // Include the header for the concrete service type
 #include <@(ros1_srv_dependency)>
 
@@ -92,6 +95,8 @@ namespace is {
 namespace sh {
 namespace ros1 {
 namespace @(namespace_variable_srv) {
+
+static eprosima::is::utils::Logger logger ("is::sh::ROS1");
 
 using Ros1_Srv = @(cpp_srv_type);
 using Ros1_Request = @(cpp_request_type);
@@ -199,6 +204,7 @@ public:
         , _handle(std::make_shared<PromiseHolder>())
         , _request_type(request_type())
         , _request_data(*_request_type)
+        , _service_name(service_name)
     {
         _service = node.advertiseService(
             service_name, &ClientProxy::service_callback, this);
@@ -212,6 +218,11 @@ public:
                 std::static_pointer_cast<PromiseHolder>(call_handle);
 
         response_to_ros1(result, _response);
+
+        logger << utils::Logger::Level::INFO
+               << "Translating reply from Integration Service to ROS 1 for service reply topic '"
+               << _service_name << "_Reply': [[ " << _response << " ]]" << std::endl;
+
         handle->promise->set_value(_response);
     }
 
@@ -221,6 +232,11 @@ private:
             Ros1_Request& request,
             Ros1_Response& response)
     {
+
+        logger << utils::Logger::Level::INFO
+               << "Receiving request from ROS 1 for service request topic '"
+               << _service_name << "_Request'" << std::endl;
+
         request_to_xtype(request, _request_data);
 
         std::promise<Ros1_Response> response_promise;
@@ -243,6 +259,7 @@ private:
 
     ServiceClientSystem::RequestCallback* _callback;
     const std::shared_ptr<PromiseHolder> _handle;
+    std::string _service_name;
     const xtypes::DynamicType::Ptr _request_type;
     xtypes::DynamicData _request_data;
     Ros1_Response _response;
@@ -392,6 +409,7 @@ public:
     // desired initialization function yet
         : _node(&node)
         , _workers(0)
+        , _service_name(service_name)
     {
         _workers.setInitializer([=]()
                 {
@@ -404,6 +422,10 @@ public:
             ServiceClient& is_client,
             std::shared_ptr<void> call_handle) override
     {
+        logger << utils::Logger::Level::INFO
+               << "Translating request from Integration Service to ROS 1 for service request topic '"
+               << _service_name << "_Request': [[ " << request << " ]]" << std::endl;
+
         _active.insert(_workers.pop()->deploy(request, is_client, std::move(call_handle)));
     }
 
@@ -422,6 +444,8 @@ private:
     is::utils::ResourcePool<ServerWorkerPtr, &is::utils::initialize_shared_null<ServerWorker> > _workers;
 
     std::unordered_set<ServerWorkerPtr> _active;
+
+    std::string _service_name;
 
 };
 
