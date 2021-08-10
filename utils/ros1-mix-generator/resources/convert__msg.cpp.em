@@ -73,6 +73,10 @@ private:
     void subscription_callback(
             const ros::MessageEvent<Ros1_Msg const>& msg_event)
     {
+        logger << utils::Logger::Level::INFO
+               << "Receiving message from ROS 1 for topic '"
+               << _topic << "'" << std::endl;
+
         if (ros::this_node::getName() == msg_event.getPublisherName())
         {
             // This is a local publication from within Integration Service. Return
@@ -81,6 +85,10 @@ private:
 
         xtypes::DynamicData data(_message_type);
         convert_to_xtype(*(msg_event.getMessage().get()), data);
+
+        logger << utils::Logger::Level::INFO
+               << "Received message: [[ " << data << " ]]" << std::endl;
+
         (*_callback)(data, nullptr);
     }
 
@@ -121,6 +129,7 @@ public:
             const std::string& topic_name,
             uint32_t queue_size,
             bool latch)
+        : _topic_name(topic_name)
     {
         _publisher = node.advertise<Ros1_Msg>(topic_name, queue_size, latch);
     }
@@ -131,6 +140,10 @@ public:
         Ros1_Msg ros1_msg;
         convert_to_ros1(message, ros1_msg);
 
+        logger << utils::Logger::Level::INFO
+                << "Sending message from Integration Service to ROS 1 for topic '" << _topic_name << "': "
+                << "[[ " << message << " ]]" << std::endl;
+
         _publisher.publish(ros1_msg);
         return true;
     }
@@ -138,6 +151,7 @@ public:
 private:
 
     ros::Publisher _publisher;
+    std::string _topic_name;
 };
 
 //==============================================================================

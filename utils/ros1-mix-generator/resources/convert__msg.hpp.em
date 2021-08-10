@@ -70,6 +70,9 @@ for field in spec.parsed_fields():
 // Include the header for the conversions
 #include <is/sh/ros1/utilities.hpp>
 
+// Include the header for the logger
+#include <is/utils/Log.hpp>
+
 // Include the header for the concrete ros1 messagetype
 #include <@(ros1_msg_dependency)>
 
@@ -147,6 +150,8 @@ inline void convert_to_xtype(const Ros1_Msg& from, xtypes::WritableDynamicDataRe
     (void)from;
     (void)to;
 }
+
+static eprosima::is::utils::Logger logger ("is::sh::ROS1");
 
 } //  namespace @(namespace_variable)
 } //  namespace ros1
